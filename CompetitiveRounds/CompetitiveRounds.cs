@@ -95,10 +95,10 @@ namespace CompetitiveRounds
                 CompetitiveRounds.MaxCardsConfig.Value = UnityEngine.Mathf.RoundToInt(val);
                 CompetitiveRounds.MaxCards = CompetitiveRounds.MaxCardsConfig.Value;
             }
-            MenuHandler.CreateSlider("Pick Phase Timer", menu, 60, 0, 100, CompetitiveRounds.PickTimerConfig.Value, TimerChanged, out UnityEngine.UI.Slider timerSlider, true);
+            MenuHandler.CreateSlider("Pick Phase Timer", menu, 60, 0f, 100f, CompetitiveRounds.PickTimerConfig.Value, TimerChanged, out UnityEngine.UI.Slider timerSlider, true);
             MenuHandler.CreateText("Time limit for each pick phase in seconds - 0 disables timer", menu, out var _, 30);
             MenuHandler.CreateText(" ", menu, out var _, 30);
-            MenuHandler.CreateSlider("Maximum Number of Cards", menu, 60, 0, 50, CompetitiveRounds.MaxCardsConfig.Value, MaxChanged, out UnityEngine.UI.Slider maxSlider, true);
+            MenuHandler.CreateSlider("Maximum Number of Cards", menu, 60, 0f, 50f, CompetitiveRounds.MaxCardsConfig.Value, MaxChanged, out UnityEngine.UI.Slider maxSlider, true);
             MenuHandler.CreateText("Maximum number of cards each player can have - 0 disables limit", menu, out var _, 30);
             MenuHandler.CreateText(" ", menu, out var _, 30);
             void WinByTwoRoundsCheckboxAction(bool flag)
