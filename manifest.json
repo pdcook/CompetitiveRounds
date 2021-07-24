@@ -1,0 +1,10 @@
+{
+    "name": "CompetitiveRounds",
+    "version_number": "0.0.0",
+    "website_url": "https://github.com/pdcook/CompetitiveRounds",
+    "description": "Gameplay options aimed at competitive play",
+    "dependencies": [
+        "willis81808-UnboundLib-2.3.0",
+	"BepInEx-BepInExPack_ROUNDS-5.4.1100"
+    ]
+}
