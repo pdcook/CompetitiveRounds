@@ -18,7 +18,7 @@ using System.Collections.Generic;
 
 namespace CompetitiveRounds
 {
-    internal static class PickTimer
+    internal static class PickTimerHandler
     {
         private static System.Random rng = new System.Random();
         private static TextMeshProUGUI timer;
@@ -31,8 +31,16 @@ namespace CompetitiveRounds
             {
                 Unbound.Instance.StopCoroutine(timerCR);
             }
-            timerCR = Unbound.Instance.StartCoroutine(PickTimer.Timer(CompetitiveRounds.PickTimer));
+            timerCR = Unbound.Instance.StartCoroutine(PickTimerHandler.Timer(CompetitiveRounds.PickTimer));
             yield return new WaitForSecondsRealtime(CompetitiveRounds.PickTimer);
+            if (MaxCardsHandler.active)
+            {
+                MaxCardsHandler.forceRemove = true;
+                while (MaxCardsHandler.active)
+                {
+                    yield return null;
+                }
+            }
             instance.Pick(((List<GameObject>)Traverse.Create(instance).Field("spawnedCards").GetValue())[rng.Next(0, ((List<GameObject>)Traverse.Create(instance).Field("spawnedCards").GetValue()).Count)], false);
             Traverse.Create(instance).Field("pickrID").SetValue(-1);
             yield break;
@@ -40,20 +48,20 @@ namespace CompetitiveRounds
         private static IEnumerator Timer(float timeToWait)
         {
             float start = Time.time;
-            if (PickTimer.timer == null)
+            if (PickTimerHandler.timer == null)
             {
-                PickTimer.CreateText();
+                PickTimerHandler.CreateText();
             }
-            PickTimer.timer.color = Color.white;
+            PickTimerHandler.timer.color = Color.white;
             timerCanvas.SetActive(true);
 
             while (Time.time < start + timeToWait)
             {
-                PickTimer.timer.text = UnityEngine.Mathf.CeilToInt(start + timeToWait - Time.time).ToString();
+                PickTimerHandler.timer.text = UnityEngine.Mathf.CeilToInt(start + timeToWait - Time.time).ToString();
                 if (UnityEngine.Mathf.CeilToInt(start + timeToWait - Time.time) <= 5)
                 {
-                    PickTimer.timer.color = Color.red;
-                    PickTimer.timer.text = "<b>" + PickTimer.timer.text + "</b>";
+                    PickTimerHandler.timer.color = Color.red;
+                    PickTimerHandler.timer.text = "<b>" + PickTimerHandler.timer.text + "</b>";
                 }
                 yield return null;
             }
@@ -74,28 +82,38 @@ namespace CompetitiveRounds
             GameObject timerObj = new GameObject("Timer", typeof(TextMeshProUGUI));
             timerObj.transform.SetParent(timerBackground.transform);
 
-            PickTimer.timer = timerObj.GetComponent<TextMeshProUGUI>();
-            PickTimer.timer.text = "";
-            PickTimer.timer.fontSize = 200f;
+            PickTimerHandler.timer = timerObj.GetComponent<TextMeshProUGUI>();
+            PickTimerHandler.timer.text = "";
+            PickTimerHandler.timer.fontSize = 200f;
             timerCanvas.transform.position = new Vector2((float)Screen.width/2f, 150f);
-            PickTimer.timer.enableWordWrapping = false;
-            PickTimer.timer.overflowMode = TextOverflowModes.Overflow;
-            PickTimer.timer.alignment = TextAlignmentOptions.Center;
+            PickTimerHandler.timer.enableWordWrapping = false;
+            PickTimerHandler.timer.overflowMode = TextOverflowModes.Overflow;
+            PickTimerHandler.timer.alignment = TextAlignmentOptions.Center;
             timerCanvas.SetActive(false);
         }
+
+        internal static IEnumerator Cleanup(IGameModeHandler gm)
+        {
+            if (TimerHandler.timer != null) { Unbound.Instance.StopCoroutine(TimerHandler.timer); }
+            if (timerCR != null)
+            {
+                Unbound.Instance.StopCoroutine(timerCR);
+            }
+            timerCanvas.SetActive(false);
+            yield break;
+        }
     }
-    [Serializable]
-    [HarmonyPatch(typeof(CardChoice), "DoPick")]
-    class CardChoicePatchDoPick
+    internal static class TimerHandler
     {
         internal static Coroutine timer = null;
-        private static void Prefix(CardChoice __instance)
+        internal static IEnumerator Start(IGameModeHandler gm)
         {
-            if (timer != null) { __instance.StopCoroutine(timer); }
+            if (timer != null) { Unbound.Instance.StopCoroutine(timer); }
             if (CompetitiveRounds.PickTimer > 0)
             {
-                timer = __instance.StartCoroutine(PickTimer.StartPickTimer(__instance));
+                timer = Unbound.Instance.StartCoroutine(PickTimerHandler.StartPickTimer(CardChoice.instance));
             }
+            yield break;
         }
     }
     [Serializable]
@@ -104,17 +122,17 @@ namespace CompetitiveRounds
     {
         private static void Postfix(CardChoice __instance)
         {
-            if (PickTimer.timerCanvas != null && PickTimer.timerCanvas.gameObject.activeInHierarchy)
+            if (PickTimerHandler.timerCanvas != null && PickTimerHandler.timerCanvas.gameObject.activeInHierarchy)
             {
-                PickTimer.timerCanvas.gameObject.SetActive(false);
+                PickTimerHandler.timerCanvas.gameObject.SetActive(false);
             }
-            if (PickTimer.timerCR != null)
+            if (PickTimerHandler.timerCR != null)
             {
-                Unbound.Instance.StopCoroutine(PickTimer.timerCR);
+                Unbound.Instance.StopCoroutine(PickTimerHandler.timerCR);
             }
-            if (CardChoicePatchDoPick.timer != null)
+            if (TimerHandler.timer != null)
             {
-                __instance.StopCoroutine(CardChoicePatchDoPick.timer);
+                __instance.StopCoroutine(TimerHandler.timer);
             }
         }
     }

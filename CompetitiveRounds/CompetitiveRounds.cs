@@ -52,15 +52,24 @@ namespace CompetitiveRounds
         private void Start()
         {
             // add credits
-            Unbound.RegisterCredits("Competitive Rounds", new string[] { "Pykess (Code)", "Slicimus (Win by Two code)", "Willis (Pick timer UI)", "ERIC (pick timer idea)" }, "github", "https://github.com/pdcook/CompetitiveRounds");
+            Unbound.RegisterCredits("Competitive Rounds", new string[] { "Pykess (Code)", "Slicimus (Win by Two code)", "Willis (Pick timer UI)", "ERIC (pick timer idea)" }, new string[] { "github", "Buy me a coffee" }, new string[] { "https://github.com/pdcook/CompetitiveRounds", "https://www.buymeacoffee.com/Pykess" });
 
             // add GUI to modoptions menu
             Unbound.RegisterMenu("Competitive Rounds", ()=> { }, this.NewGUI);
+
+            // add hooks for pick timer
+            GameModeManager.AddHook(GameModeHooks.HookPlayerPickStart, TimerHandler.Start);
+            GameModeManager.AddHook(GameModeHooks.HookPlayerPickEnd, PickTimerHandler.Cleanup);
 
             // add hooks for win by 2
             GameModeManager.AddHook(GameModeHooks.HookGameStart, WinByTwo.ResetPoints);
             GameModeManager.AddHook(GameModeHooks.HookRoundEnd, WinByTwo.RoundX2);
             GameModeManager.AddHook(GameModeHooks.HookPointEnd, WinByTwo.PointX2);
+
+            // add hooks for max cards
+            GameModeManager.AddHook(GameModeHooks.HookPickStart, (gm) => MaxCardsHandler.DiscardPhase(gm, false));
+            GameModeManager.AddHook(GameModeHooks.HookPickEnd, (gm) => MaxCardsHandler.DiscardPhase(gm, true));
+            GameModeManager.AddHook(GameModeHooks.HookPickEnd, PickTimerHandler.Cleanup);
 
             // handshake to sync settings
             Unbound.RegisterHandshake(CompetitiveRounds.ModId, this.OnHandShakeCompleted);
