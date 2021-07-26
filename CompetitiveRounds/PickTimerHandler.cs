@@ -99,7 +99,7 @@ namespace CompetitiveRounds
             {
                 Unbound.Instance.StopCoroutine(timerCR);
             }
-            timerCanvas.SetActive(false);
+            if (timerCanvas != null) { timerCanvas.SetActive(false); }
             yield break;
         }
     }

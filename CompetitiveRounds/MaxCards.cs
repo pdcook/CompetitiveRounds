@@ -100,6 +100,12 @@ namespace CompetitiveRounds
         private static System.Random rng = new System.Random();
         internal static IEnumerator DiscardPhase(IGameModeHandler gm, bool endpick)
         {
+            if (PlayerManager.instance.GetLastPlayerAlive() == null)
+            {
+                yield break;
+            }
+            int winningTeamID = PlayerManager.instance.GetLastPlayerAlive().teamID;
+
             if (textCanvas == null)
             {
                 CreateText();
@@ -107,7 +113,7 @@ namespace CompetitiveRounds
             yield return new WaitForSecondsRealtime(0.1f);
             if (!endpick)
             {
-                foreach (Player player in PlayerManager.instance.players.Where(player => (PlayerManager.instance.GetLastPlayerAlive() == null) || (PlayerManager.instance.GetLastPlayerAlive() != null && player.teamID != PlayerManager.instance.GetLastPlayerAlive().teamID)))
+                foreach (Player player in PlayerManager.instance.players.Where(player => player.teamID != winningTeamID))
                 {
                     if (CompetitiveRounds.MaxCards > 0 && ModdingUtils.Utils.CardBarUtils.instance.GetCardBarSquares(player.teamID).Length - 1 >= CompetitiveRounds.MaxCards)
                     {
