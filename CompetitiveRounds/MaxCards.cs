@@ -46,7 +46,7 @@ namespace CompetitiveRounds
         public void OnPointerDown(PointerEventData eventData)
         {
             down = true;
-            UnityEngine.Debug.Log("CLICK DOWN: " + idx.ToString());
+            //UnityEngine.Debug.Log("CLICK DOWN: " + idx.ToString());
             this.gameObject.transform.localScale = Vector3.one;
             Color.RGBToHSV(ModdingUtils.Utils.CardBarUtils.instance.GetCardSquareColor(this.gameObject.transform.GetChild(0).gameObject), out float h, out float s, out float v);
             Color newColor = Color.HSVToRGB(h, s - 0.1f, v - 0.1f);
@@ -55,7 +55,7 @@ namespace CompetitiveRounds
         }
         public void OnPointerUp(PointerEventData eventData)
         {
-            UnityEngine.Debug.Log("CLICK UP: " + idx.ToString());
+            //UnityEngine.Debug.Log("CLICK UP: " + idx.ToString());
             if (down)
             {
                 down = false;
@@ -125,7 +125,7 @@ namespace CompetitiveRounds
             {
                 foreach (Player player in PlayerManager.instance.players)
                 {
-                    UnityEngine.Debug.Log(player.teamID.ToString() + ": " + (ModdingUtils.Utils.CardBarUtils.instance.GetCardBarSquares(player.teamID).Length - 1).ToString());
+                    //UnityEngine.Debug.Log(player.teamID.ToString() + ": " + (ModdingUtils.Utils.CardBarUtils.instance.GetCardBarSquares(player.teamID).Length - 1).ToString());
                     if (CompetitiveRounds.MaxCards > 0 && ModdingUtils.Utils.CardBarUtils.instance.GetCardBarSquares(player.teamID).Length - 1 > CompetitiveRounds.MaxCards)
                     {
                         yield return Discard(player, endpick);
@@ -138,7 +138,7 @@ namespace CompetitiveRounds
         {
             active = true;
             forceRemove = false;
-            UnityEngine.Debug.Log("MAX CARDS");
+            //UnityEngine.Debug.Log("MAX CARDS");
             int teamID = player.teamID;
             if (CompetitiveRounds.MaxCards > 0 && ModdingUtils.Utils.CardBarUtils.instance.GetCardBarSquares(teamID).Length-1 >= ((endpick) ? CompetitiveRounds.MaxCards + 1 : CompetitiveRounds.MaxCards))
             {
