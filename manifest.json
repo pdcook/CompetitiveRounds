@@ -1,6 +1,6 @@
 {
     "name": "CompetitiveRounds",
-    "version_number": "0.0.0",
+    "version_number": "0.0.1",
     "website_url": "https://github.com/pdcook/CompetitiveRounds",
     "description": "Gameplay options aimed at competitive play",
     "dependencies": [

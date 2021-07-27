@@ -65,7 +65,14 @@ namespace CompetitiveRounds
 
                 if (hover)
                 {
-                    NetworkingManager.RPC(typeof(Selectable), nameof(RPCA_RemoveCardOnClick), new object[] { player.data.view.ControllerActorNr, idx - 1 });
+                    if (!PhotonNetwork.OfflineMode)
+                    {
+                        NetworkingManager.RPC(typeof(Selectable), nameof(RPCA_RemoveCardOnClick), new object[] { player.data.view.ControllerActorNr, idx - 1 });
+                    }
+                    else
+                    {
+                        ModdingUtils.Utils.Cards.instance.RemoveCardFromPlayer(player, idx-1);
+                    }
                 }
             }
         }
