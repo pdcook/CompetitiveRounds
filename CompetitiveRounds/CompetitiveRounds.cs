@@ -18,7 +18,8 @@ using UnboundLib.Networking;
 namespace CompetitiveRounds
 {
     [BepInDependency("com.willis.rounds.unbound", BepInDependency.DependencyFlags.HardDependency)]
-    [BepInPlugin(ModId, ModName, "0.0.0.1")]
+    [BepInDependency("pykess.rounds.plugins.moddingutils", BepInDependency.DependencyFlags.HardDependency)] // utilities for cards and cardbars
+    [BepInPlugin(ModId, ModName, "0.0.0.2")]
     [BepInProcess("Rounds.exe")]
     public class CompetitiveRounds : BaseUnityPlugin
     {

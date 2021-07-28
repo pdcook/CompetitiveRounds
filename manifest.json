@@ -1,9 +1,10 @@
 {
     "name": "CompetitiveRounds",
-    "version_number": "0.0.1",
+    "version_number": "0.0.2",
     "website_url": "https://github.com/pdcook/CompetitiveRounds",
     "description": "Gameplay options aimed at competitive play",
     "dependencies": [
+        "Pykess-ModdingUtils-0.0.1",
         "willis81808-UnboundLib-2.4.0",
 	"BepInEx-BepInExPack_ROUNDS-5.4.1100"
     ]
