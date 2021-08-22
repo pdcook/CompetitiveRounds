@@ -122,6 +122,11 @@ namespace CompetitiveRounds
             // add GUI to modoptions menu
             Unbound.RegisterMenu("Competitive Rounds", ()=> { }, this.NewGUI, null, false);
 
+            // add hooks for pre-game picks and bans
+            GameModeManager.AddHook(GameModeHooks.HookGameStart, PreGamePickBanHandler.RestoreCardToggles);
+            GameModeManager.AddHook(GameModeHooks.HookGameStart, PreGamePickBanHandler.PreGameBan);
+            GameModeManager.AddHook(GameModeHooks.HookGameEnd, PreGamePickBanHandler.RestoreCardToggles);
+
             // add hooks for pick timer
             GameModeManager.AddHook(GameModeHooks.HookPlayerPickStart, TimerHandler.Start);
             GameModeManager.AddHook(GameModeHooks.HookPlayerPickEnd, PickTimerHandler.Cleanup);

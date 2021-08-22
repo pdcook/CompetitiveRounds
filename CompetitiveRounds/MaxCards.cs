@@ -155,7 +155,7 @@ namespace CompetitiveRounds
                 // display text
                 textCanvas.SetActive(true);
 
-                if (CompetitiveRounds.PassDiscard && player.data.view.ControllerActorNr == PhotonNetwork.LocalPlayer.ActorNumber)
+                if (!endpick && CompetitiveRounds.PassDiscard && player.data.view.ControllerActorNr == PhotonNetwork.LocalPlayer.ActorNumber)
                 {
                     passButton.SetActive(true);
                 }
@@ -268,14 +268,13 @@ namespace CompetitiveRounds
         }
         private static void CreatePassButton()
         {
-            passButton = new GameObject("PassCanvas", typeof(Canvas));
+            passButton = new GameObject("PassCanvas", typeof(Canvas), typeof(GraphicRaycaster));
             passButton.transform.SetParent(Unbound.Instance.canvas.transform);
-            GameObject passBackground = new GameObject("PassBackground", typeof(Image), typeof(PassButtonSelectable), typeof(HoverEvent),typeof(Button));
-            passBackground.GetComponent<Button>().onClick.AddListener(() => { UnityEngine.Debug.Log("PRESSED"); MaxCardsHandler.pass = true; });
+            GameObject passBackground = new GameObject("PassBackground", typeof(Image), typeof(PassButtonSelectable));
             passBackground.transform.SetParent(passButton.transform);
             passBackground.GetComponent<Image>().color = new Color(0f, 0f, 0f, 0.85f);
             passBackground.GetComponent<Image>().rectTransform.anchorMin = new Vector2(0f, 0f);
-            passBackground.GetComponent<Image>().rectTransform.anchorMax = new Vector2(1f, -0.1f);
+            passBackground.GetComponent<Image>().rectTransform.anchorMax = new Vector2(1f, 1f);
             GameObject passObj = new GameObject("Pass", typeof(TextMeshProUGUI));
             passObj.transform.SetParent(passBackground.transform);
 
@@ -357,6 +356,42 @@ namespace CompetitiveRounds
         private static void RPCA_PassOnClick(int actorID)
         {
             MaxCardsHandler.pass = true;
+        }
+    }
+
+    [Serializable]
+    [HarmonyPatch(typeof(CardChoice), "DoPick")]
+    class CardChoicePatchDoPick
+    {
+        private static bool Prefix(CardChoice __instance)
+        {
+            // skip pick phase if the player has passed
+            if (MaxCardsHandler.pass)
+            {
+                __instance.IsPicking = false;
+                return false;
+            }
+            else
+            {
+                return true;
+            }
+        }
+    }
+    [Serializable]
+    [HarmonyPatch(typeof(CardChoiceVisuals), "Show")]
+    class CardChoiceVisualsPatchShow
+    {
+        private static bool Prefix(CardChoiceVisuals __instance)
+        {
+            // skip pick phase if the player has passed
+            if (MaxCardsHandler.pass)
+            {
+                return false;
+            }
+            else
+            {
+                return true;
+            }
         }
     }
 }
