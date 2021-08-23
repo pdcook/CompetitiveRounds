@@ -28,6 +28,8 @@ namespace CompetitiveRounds
         internal static List<string> bannedNames = new List<string>() { };
         internal static List<string> disabledNames = new List<string>() { };
 
+        private static bool pregamepickfinished = false;
+
         // UI courtesy of Willis
         private static void CreateText()
         {
@@ -50,9 +52,48 @@ namespace CompetitiveRounds
             PreGamePickBanHandler.text.alignment = TextAlignmentOptions.Center;
             textCanvas.SetActive(false);
         }
+        internal static IEnumerator PreGamePickReset(IGameModeHandler gm)
+        {
+            UnityEngine.Debug.Log("pick reset");
+            pregamepickfinished = false;
+            yield break;
+        }
+        internal static IEnumerator PreGamePicksStandard(IGameModeHandler gm)
+        {
+            UnityEngine.Debug.Log("start pregame pick standard");
+
+            if (pregamepickfinished || !CompetitiveRounds.PreGamePickMethod || CompetitiveRounds.PreGamePickStandard <= 1)
+            {
+                yield break;
+            }
+
+            pregamepickfinished = true;
+
+            yield return new WaitForSecondsRealtime(1f);
+
+            yield return GameModeManager.TriggerHook(GameModeHooks.HookPickStart);
+            for (int _ = 0; _ < CompetitiveRounds.PreGamePickStandard - 1; _++)
+            {
+                foreach (Player player in PlayerManager.instance.players.ToArray())
+                {
+                    yield return GameModeManager.TriggerHook(GameModeHooks.HookPlayerPickStart);
+                    CardChoiceVisuals.instance.Show(Enumerable.Range(0, PlayerManager.instance.players.Count).Where(i => PlayerManager.instance.players[i].playerID == player.playerID).First(), true);
+                    yield return CardChoice.instance.DoPick(1, player.playerID, PickerType.Player);
+                    yield return new WaitForSecondsRealtime(0.1f);
+                    yield return GameModeManager.TriggerHook(GameModeHooks.HookPlayerPickEnd);
+                    yield return new WaitForSecondsRealtime(0.1f);
+                }
+            }
+
+            CardChoiceVisuals.instance.Hide();
+            yield return GameModeManager.TriggerHook(GameModeHooks.HookPickEnd);
+
+            yield break;
+        }
 
         internal static IEnumerator PreGameBan(IGameModeHandler gm)
         {
+
             if (textCanvas == null)
             {
                 CreateText();
@@ -63,9 +104,13 @@ namespace CompetitiveRounds
                 yield break;
             }
 
+            yield return new WaitForSecondsRealtime(0.5f);
+
+            CardInfo[] allCards = ((ObservableCollection<CardInfo>)typeof(CardManager).GetField("activeCards", BindingFlags.NonPublic | BindingFlags.Static).GetValue(null)).ToList().Concat((List<CardInfo>)typeof(CardManager).GetField("inactiveCards", BindingFlags.NonPublic | BindingFlags.Static).GetValue(null)).ToArray();
+
             // get list of already disabled cards
             disabledNames = new List<string>() { };
-            foreach (Card card in CardManager.cards.Values.Where(card => !card.enabled))
+            foreach (Card card in CardManager.cards.Values.Where(card => !card.enabled).ToArray())
             {
                 disabledNames.Add(CardManager.cards.First(card_ => card_.Value == card).Key);
             }
@@ -87,10 +132,12 @@ namespace CompetitiveRounds
                     actions[i] = () =>
                     {
                         // ban card via RPC to ensure syncing
-                        NetworkingManager.RPC(typeof(PreGamePickBanHandler), nameof(RPCA_BanCard), new object[] { i1 });
-
-                        Unbound.Instance.ExecuteAfterSeconds(0.1f, () =>
+                        if (PhotonNetwork.OfflineMode || player.data.view.ControllerActorNr == PhotonNetwork.LocalPlayer.ActorNumber)
                         {
+                            NetworkingManager.RPC(typeof(PreGamePickBanHandler), nameof(RPCA_BanCard), new object[] { i1 });
+                        }
+                        //Unbound.Instance.ExecuteAfterSeconds(0.1f, () =>
+                        //{
                             if (player.data.view.ControllerActorNr == PhotonNetwork.LocalPlayer.ActorNumber)
                             {
                                 ToggleCardsMenuHandler.Close();
@@ -99,7 +146,7 @@ namespace CompetitiveRounds
                                     ToggleCardsMenuHandler.Open(true, true, actions, disabledNames.ToArray());
                                 }
                             }
-                        });
+                        //});
 
                     };
                 }
@@ -138,16 +185,16 @@ namespace CompetitiveRounds
             text.text = "BANNED";
 
             List<CardInfo> cardsToShow = new List<CardInfo>() { };
-            CardInfo[] allCards = ((ObservableCollection<CardInfo>)typeof(CardManager).GetField("activeCards", BindingFlags.NonPublic | BindingFlags.Static).GetValue(null)).ToList().Concat((List<CardInfo>)typeof(CardManager).GetField("inactiveCards", BindingFlags.NonPublic | BindingFlags.Static).GetValue(null)).ToArray();
 
-            foreach (string cardName in bannedNames)
+            foreach (string cardName in bannedNames.ToArray())
             {
                 cardsToShow.Add(allCards.Where(card => card.name == cardName).First());
             }
 
             int teamID = (PlayerManager.instance.players.Where(player => player.data.view.ControllerActorNr == PhotonNetwork.LocalPlayer.ActorNumber).First()).teamID;
-            
-            foreach (CardInfo cardToShow in cardsToShow)
+
+            UnityEngine.Debug.Log("Start showing banned cards...");
+            foreach (CardInfo cardToShow in cardsToShow.ToArray())
             {
 
                 ModdingUtils.Utils.CardBarUtils.instance.PlayersCardBar(teamID).OnHover(cardToShow, Vector3.zero);
@@ -158,8 +205,12 @@ namespace CompetitiveRounds
                 ModdingUtils.Utils.CardBarUtils.instance.PlayersCardBar(teamID).StopHover();
 
             }
+            UnityEngine.Debug.Log("Finished showing");
 
             textCanvas.SetActive(false);
+
+            yield return new WaitForSecondsRealtime(0.5f);
+            UnityEngine.Debug.Log("Finished ban phase");
 
             yield break;
         }
@@ -171,9 +222,8 @@ namespace CompetitiveRounds
 
             // disable the banned card
             GameObject bannedCard = ToggleCardsMenuHandler.cardObjs.ElementAt(idx).Key;
-            //CardManager.cards[bannedCard.name].enabled = false;
-            CardManager.DisableCard(CardManager.cards[bannedCard.name].cardInfo, false);
 
+            CardManager.DisableCard(CardManager.cards[bannedCard.name].cardInfo, false);
 
             disabledNames.Add(bannedCard.name);
 
@@ -182,7 +232,11 @@ namespace CompetitiveRounds
         }
         internal static IEnumerator RestoreCardToggles(IGameModeHandler gm)
         {
-            NetworkingManager.RPC(typeof(PreGamePickBanHandler), nameof(RPCA_SyncToggle), new object[] { });
+            if (PhotonNetwork.OfflineMode || PhotonNetwork.IsMasterClient)
+            {
+                NetworkingManager.RPC(typeof(PreGamePickBanHandler), nameof(RPCA_SyncToggle), new object[] { });
+            }
+            yield return new WaitForSecondsRealtime(0.5f);
             yield break;
         }
         [UnboundRPC]

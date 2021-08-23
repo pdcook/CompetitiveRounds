@@ -126,6 +126,8 @@ namespace CompetitiveRounds
             GameModeManager.AddHook(GameModeHooks.HookGameStart, PreGamePickBanHandler.RestoreCardToggles);
             GameModeManager.AddHook(GameModeHooks.HookGameStart, PreGamePickBanHandler.PreGameBan);
             GameModeManager.AddHook(GameModeHooks.HookGameEnd, PreGamePickBanHandler.RestoreCardToggles);
+            GameModeManager.AddHook(GameModeHooks.HookGameStart, PreGamePickBanHandler.PreGamePickReset);
+            GameModeManager.AddHook(GameModeHooks.HookPickStart, PreGamePickBanHandler.PreGamePicksStandard);
 
             // add hooks for pick timer
             GameModeManager.AddHook(GameModeHooks.HookPlayerPickStart, TimerHandler.Start);
