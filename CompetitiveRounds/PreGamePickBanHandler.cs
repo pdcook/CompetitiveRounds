@@ -56,22 +56,26 @@ namespace CompetitiveRounds
             PreGamePickBanHandler.text.alignment = TextAlignmentOptions.Center;
             textCanvas.SetActive(false);
         }
+        // the final EndPick hook should set skipFirstPickPhase to false
         internal static IEnumerator SetSkipFirstPickPhase(IGameModeHandler gm)
         {
             PreGamePickBanHandler.skipFirstPickPhase = false;
             yield break;
         }
+        // the first startgame hook should reset the pregamepickfinished bool
         internal static IEnumerator PreGamePickReset(IGameModeHandler gm)
         {
             pregamepickfinished = false;
             yield break;
         }
+        // the last pickstart hook should set pregamepickfinished to true
         internal static IEnumerator PreGamePicksFinished(IGameModeHandler gm)
         {
             pregamepickfinished = true;
             yield break;
         }
 
+        // method for pre-game picks using the standard five card draw method
         internal static IEnumerator PreGamePicksStandard(IGameModeHandler gm)
         {
 
@@ -99,6 +103,7 @@ namespace CompetitiveRounds
 
             yield break;
         }
+        // method to get all the card toggle names that do not match the given rarity
         private static string[] GetCardToggleNamesWithoutRarity(CardInfo.Rarity rarity)
         {
             List<string> cardNames = new List<string>() { };
@@ -112,6 +117,7 @@ namespace CompetitiveRounds
 
             return cardNames.ToArray();
         }
+        // method to pick from the entire deck using any given rarity
         internal static IEnumerator PickFromRarity(Player player, CardInfo.Rarity rarity)
         {
             string[] colors = new string[] { "ORANGE", "BLUE", "RED", "GREEN" };
@@ -147,49 +153,63 @@ namespace CompetitiveRounds
                 var i1 = i;
                 actions[i] = () =>
                 {
+                    // each action checks if the player is allowed the card, and if so assigns it using ModdingUtils
                     if (PhotonNetwork.OfflineMode || player.data.view.ControllerActorNr == PhotonNetwork.LocalPlayer.ActorNumber)
                     {
                         if (!ModdingUtils.Utils.Cards.instance.PlayerIsAllowedCard(player, CardManager.cards[ToggleCardsMenuHandler.cardObjs.ElementAt(i1).Key.name].cardInfo))
                         {
                             return;
                         }
+                        // player is allowed card, increase the number of picks
                         currentPicks++;
+                        // assign offline
                         if (PhotonNetwork.OfflineMode)
                         {
                             ModdingUtils.Utils.Cards.instance.AddCardToPlayer(player, CardManager.cards[ToggleCardsMenuHandler.cardObjs.ElementAt(i1).Key.name].cardInfo);
                         }
+                        // assign via RPC
                         else
                         {
                             NetworkingManager.RPC(typeof(PreGamePickBanHandler), nameof(RPCA_AddCardToPlayer), new object[] { player.data.view.ControllerActorNr, ToggleCardsMenuHandler.cardObjs.ElementAt(i1).Key.name });
                         }
+                        // sync the current number of picks
                         NetworkingManager.RPC(typeof(PreGamePickBanHandler), nameof(RPCA_UpdateCardCount), new object[] { currentPicks });
                     }
                 };
             }
 
+            // create the pick text canvas if it doesn't already exist
             if (textCanvas == null)
             {
                 CreateText();
             }
+            // if the client is the player thats picking, show the card choice menu with disabled cards greyed out
             if (player.data.view.ControllerActorNr == PhotonNetwork.LocalPlayer.ActorNumber)
             {
                 ToggleCardsMenuHandler.Open(true, true, actions, disabledNames.ToArray().Concat(GetCardToggleNamesWithoutRarity(rarity)).ToArray());
             }
             textCanvas.SetActive(true);
+            
+            // wait until all the picks are done
             while (currentPicks < cardsToPick)
             {
+                // if the client is the player picking, tell them how many of what rarity they have left to choose
                 if (player.data.view.ControllerActorNr == PhotonNetwork.LocalPlayer.ActorNumber)
                 {
                     text.text = "PICK " + (cardsToPick - currentPicks).ToString() + " " + rarityString + " CARD" + ((cardsToPick - currentPicks != 1) ? "S" : "");
                 }
+                // otherwise, display a waiting message
                 else
                 {
                     text.text = String.Format("WAITING FOR {0}...", player.playerID < colors.Length ? colors[player.playerID] : "PLAYER");
                 }
                 yield return null;
             }
+            // hide the text once everything is done
             textCanvas.SetActive(false);
+            // close the menu
             ToggleCardsMenuHandler.Close();
+            // tell CompetitiveRounds to skip the first standard pick phase since the whole-deck pick was used
             PreGamePickBanHandler.skipFirstPickPhase = true;
             yield break;
         }
@@ -201,6 +221,7 @@ namespace CompetitiveRounds
         [UnboundRPC]
         private static void RPCA_AddCardToPlayer(int actorID, string cardName)
         {
+            // the master client must call AddCardToPlayer
             if (PhotonNetwork.OfflineMode || PhotonNetwork.IsMasterClient)
             {
                 Player player = (Player)typeof(PlayerManager).InvokeMember("GetPlayerWithActorID",
@@ -209,6 +230,7 @@ namespace CompetitiveRounds
                 ModdingUtils.Utils.Cards.instance.AddCardToPlayer(player, CardManager.cards[cardName].cardInfo);
             }
         }
+        // pre-game pick from all common cards
         internal static IEnumerator PreGamePicksCommon(IGameModeHandler gm)
         {
             if (pregamepickfinished || CompetitiveRounds.PreGamePickMethod || CompetitiveRounds.PreGamePickCommon < 1)
@@ -229,6 +251,7 @@ namespace CompetitiveRounds
             
             yield break;
         }
+        // pre-game pick from all uncommon cards
         internal static IEnumerator PreGamePicksUncommon(IGameModeHandler gm)
         {
 
@@ -250,6 +273,7 @@ namespace CompetitiveRounds
             
             yield break;
         }
+        // pre-game pick from all rare cards
         internal static IEnumerator PreGamePicksRare(IGameModeHandler gm)
         {
 
@@ -272,42 +296,54 @@ namespace CompetitiveRounds
             
             yield break;
         }
-        
+        [UnboundRPC]
+        private static void RPCA_SyncDisabledNames(string[] disabled)
+        {
+            disabledNames = disabled.ToList();
+        }
+        // pre-game ban phase
         internal static IEnumerator PreGameBan(IGameModeHandler gm)
         {
-
+            // create the text canvas if it doesn't already exist
             if (textCanvas == null)
             {
                 CreateText();
             }
 
+            // skip if the option is disabled
             if (CompetitiveRounds.PreGameBan == 0)
             {
                 yield break;
             }
 
+            // clear the list of cards to show at the end of the ban phase
             cardsToShow = new List<CardInfo>() { };
 
             yield return new WaitForSecondsRealtime(0.5f);
 
             CardInfo[] allCards = ((ObservableCollection<CardInfo>)typeof(CardManager).GetField("activeCards", BindingFlags.NonPublic | BindingFlags.Static).GetValue(null)).ToList().Concat((List<CardInfo>)typeof(CardManager).GetField("inactiveCards", BindingFlags.NonPublic | BindingFlags.Static).GetValue(null)).ToArray();
+            CardInfo[] inactiveCards = ((List<CardInfo>)typeof(CardManager).GetField("inactiveCards", BindingFlags.NonPublic | BindingFlags.Static).GetValue(null)).ToArray();
 
             // get list of already disabled cards
-            disabledNames = new List<string>() { };
+            disabledNames = new List<string>() { }; // names of cardtoggles that are disabled/banned
 
-            // foreach causes crash for some reason...
             for (int i = 0; i < CardManager.cards.Values.ToArray().Length; i++)
             {
-                if (!CardManager.cards.Values.ToArray()[i].enabled)
+                if (inactiveCards.Contains(CardManager.cards.Values.ToArray()[i].cardInfo))
                 {
                     disabledNames.Add(CardManager.cards.Keys.ToArray()[i]);
                 }
             }
 
-            yield return new WaitForSecondsRealtime(0.5f);
+            if (PhotonNetwork.IsMasterClient)
+            {
+                NetworkingManager.RPC(typeof(PreGamePickBanHandler), nameof(RPCA_SyncDisabledNames), new object[] { disabledNames.ToArray() });
+            }
 
+            yield return new WaitForSecondsRealtime(1f);
+
+            // names of CardInfos that are banned
             bannedNames = new List<string>() { };
-
 
             textCanvas.SetActive(true);
 
@@ -324,11 +360,16 @@ namespace CompetitiveRounds
                     var i1 = i;
                     actions[i] = () =>
                     {
+                        // increase the local number of bans
                         currentBans++;
+                        // get the banned togglecard obj
                         GameObject bannedCard = ToggleCardsMenuHandler.cardObjs.ElementAt(i1).Key;
+                        // add it to the list of locally banned cards that will be synced later
                         locallyBanned.Add(bannedCard.name);
-
+                        // close the menu
                         ToggleCardsMenuHandler.Close();
+
+                        // if the client is the player picking, either re-open the menu or end the ban phase for this player by syncing the cards they banned with all clients
                         if (PlayerManager.instance.players[p].data.view.ControllerActorNr == PhotonNetwork.LocalPlayer.ActorNumber)
                         {
                             if (currentBans < CompetitiveRounds.PreGameBan)
@@ -340,8 +381,6 @@ namespace CompetitiveRounds
                                 NetworkingManager.RPC(typeof(PreGamePickBanHandler), nameof(RPCA_EndBan), new object[] {locallyBanned.ToArray()});
                             }
                         }
-                        //});
-
                     };
                 }
 
@@ -366,11 +405,13 @@ namespace CompetitiveRounds
                     yield return null;
                 }
                 yield return new WaitForSecondsRealtime(0.5f);
+                // close the menu
                 ToggleCardsMenuHandler.Close();
             }
             textCanvas.SetActive(false);
 
             yield return new WaitForSecondsRealtime(0.5f);
+            // close the menu again just in case
             ToggleCardsMenuHandler.Close();
 
             // show the banned cards
@@ -397,6 +438,7 @@ namespace CompetitiveRounds
 
             yield break;
         }
+        // sync disabledNames, bannedNames, cardsToShow, disable any banned cards, and end the ban phase for the current player
         [UnboundRPC]
         private static void RPCA_EndBan(string[] banned)
         {
@@ -416,12 +458,13 @@ namespace CompetitiveRounds
             {
                 NetworkingManager.RPC(typeof(PreGamePickBanHandler), nameof(RPCA_SyncToggle), new object[] { });
             }
-            yield return new WaitForSecondsRealtime(0.5f);
+            yield return new WaitForSecondsRealtime(1f);
             yield break;
         }
         [UnboundRPC]
         private static void RPCA_SyncToggle()
         {
+
             for (int i = 0; i < CardManager.cards.Count; i++)
             {
                 if (CardManager.cards.Values.ToArray()[i].enabled)

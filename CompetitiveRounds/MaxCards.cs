@@ -161,6 +161,7 @@ namespace CompetitiveRounds
                 // display text
                 textCanvas.SetActive(true);
 
+                // give the player the option to pass if the option is enabled and it is not the end of the pick phase
                 if (!endpick && CompetitiveRounds.PassDiscard && player.data.view.ControllerActorNr == PhotonNetwork.LocalPlayer.ActorNumber)
                 {
                     passButton.SetActive(true);

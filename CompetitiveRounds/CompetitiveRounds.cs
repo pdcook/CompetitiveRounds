@@ -123,7 +123,7 @@ namespace CompetitiveRounds
             Unbound.RegisterMenu("Competitive Rounds", ()=> { }, this.NewGUI, null, false);
 
             // add hooks for pre-game picks and bans
-            GameModeManager.AddHook(GameModeHooks.HookGameStart, PreGamePickBanHandler.RestoreCardToggles);
+            GameModeManager.AddHook(GameModeHooks.HookGameStart, PreGamePickBanHandler.RestoreCardToggles); // reset banned cards
             GameModeManager.AddHook(GameModeHooks.HookGameStart, PreGamePickBanHandler.PreGameBan);
             GameModeManager.AddHook(GameModeHooks.HookGameEnd, PreGamePickBanHandler.RestoreCardToggles);
             GameModeManager.AddHook(GameModeHooks.HookGameStart, PreGamePickBanHandler.PreGamePickReset);
@@ -149,7 +149,7 @@ namespace CompetitiveRounds
             // the last pickstart hook should be the pregamepickfinish
             GameModeManager.AddHook(GameModeHooks.HookPickStart, PreGamePickBanHandler.PreGamePicksFinished);
 
-            // the last pickstart hook should set skipFirstPickPhase to false
+            // the last pickend hook should set skipFirstPickPhase to false
             GameModeManager.AddHook(GameModeHooks.HookPickEnd, PreGamePickBanHandler.SetSkipFirstPickPhase);
 
             // handshake to sync settings
