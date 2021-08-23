@@ -128,6 +128,9 @@ namespace CompetitiveRounds
             GameModeManager.AddHook(GameModeHooks.HookGameEnd, PreGamePickBanHandler.RestoreCardToggles);
             GameModeManager.AddHook(GameModeHooks.HookGameStart, PreGamePickBanHandler.PreGamePickReset);
             GameModeManager.AddHook(GameModeHooks.HookPickStart, PreGamePickBanHandler.PreGamePicksStandard);
+            GameModeManager.AddHook(GameModeHooks.HookPickStart, PreGamePickBanHandler.PreGamePicksCommon);
+            GameModeManager.AddHook(GameModeHooks.HookPickStart, PreGamePickBanHandler.PreGamePicksUncommon);
+            GameModeManager.AddHook(GameModeHooks.HookPickStart, PreGamePickBanHandler.PreGamePicksRare);
 
             // add hooks for pick timer
             GameModeManager.AddHook(GameModeHooks.HookPlayerPickStart, TimerHandler.Start);
@@ -142,6 +145,9 @@ namespace CompetitiveRounds
             GameModeManager.AddHook(GameModeHooks.HookPickStart, (gm) => MaxCardsHandler.DiscardPhase(gm, false));
             GameModeManager.AddHook(GameModeHooks.HookPickEnd, (gm) => MaxCardsHandler.DiscardPhase(gm, true));
             GameModeManager.AddHook(GameModeHooks.HookPickEnd, PickTimerHandler.Cleanup);
+
+            // the last pickstart hook should be the pregamepickfinish
+            GameModeManager.AddHook(GameModeHooks.HookPickStart, PreGamePickBanHandler.PreGamePicksFinished);
 
             // handshake to sync settings
             Unbound.RegisterHandshake(CompetitiveRounds.ModId, this.OnHandShakeCompleted);

@@ -100,6 +100,7 @@ namespace CompetitiveRounds
         internal static bool active = false;
         internal static bool forceRemove = false;
         internal static bool pass = false;
+        internal static bool skipDiscardPhase = false;
         private static System.Random rng = new System.Random();
         internal static IEnumerator DiscardPhase(IGameModeHandler gm, bool endpick)
         {
@@ -150,6 +151,12 @@ namespace CompetitiveRounds
             forceRemove = false;
             pass = false;
             int teamID = player.teamID;
+            if (skipDiscardPhase && !endpick)
+            {
+                pass = true;
+                yield break;
+            }
+            skipDiscardPhase = false;
             if (CompetitiveRounds.MaxCards > 0 && ModdingUtils.Utils.CardBarUtils.instance.GetCardBarSquares(teamID).Length-1 >= ((endpick) ? CompetitiveRounds.MaxCards + 1 : CompetitiveRounds.MaxCards))
             {
                 // display text
@@ -291,7 +298,6 @@ namespace CompetitiveRounds
     }
     internal class PassButtonSelectable : MonoBehaviour, IPointerUpHandler, IPointerDownHandler, IPointerEnterHandler, IPointerExitHandler
     {
-        internal Player player;
         bool hover = false;
         bool down = false;
         Color orig;
@@ -326,11 +332,11 @@ namespace CompetitiveRounds
                 {
                     if (!PhotonNetwork.OfflineMode)
                     {
-                        NetworkingManager.RPC(typeof(PassButtonSelectable), nameof(RPCA_PassOnClick), new object[] { player.data.view.ControllerActorNr });
+                        NetworkingManager.RPC(typeof(PassButtonSelectable), nameof(RPCA_PassOnClick), new object[] { });
                     }
                     else
                     {
-                        PassOnClick(player);
+                        PassOnClick();
                     }
                 }
             }
@@ -348,12 +354,12 @@ namespace CompetitiveRounds
             this.gameObject.transform.localScale = origScale;
             this.gameObject.GetComponentInChildren<Image>().color = orig;
         }
-        private static void PassOnClick(Player player)
+        private static void PassOnClick()
         {
             MaxCardsHandler.pass = true;
         }
         [UnboundRPC]
-        private static void RPCA_PassOnClick(int actorID)
+        private static void RPCA_PassOnClick()
         {
             MaxCardsHandler.pass = true;
         }
