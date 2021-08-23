@@ -100,7 +100,6 @@ namespace CompetitiveRounds
         internal static bool active = false;
         internal static bool forceRemove = false;
         internal static bool pass = false;
-        internal static bool skipDiscardPhase = false;
         private static System.Random rng = new System.Random();
         internal static IEnumerator DiscardPhase(IGameModeHandler gm, bool endpick)
         {
@@ -151,12 +150,12 @@ namespace CompetitiveRounds
             forceRemove = false;
             pass = false;
             int teamID = player.teamID;
-            if (skipDiscardPhase && !endpick)
+
+            if (PreGamePickBanHandler.skipFirstPickPhase && !endpick)
             {
-                pass = true;
                 yield break;
             }
-            skipDiscardPhase = false;
+
             if (CompetitiveRounds.MaxCards > 0 && ModdingUtils.Utils.CardBarUtils.instance.GetCardBarSquares(teamID).Length-1 >= ((endpick) ? CompetitiveRounds.MaxCards + 1 : CompetitiveRounds.MaxCards))
             {
                 // display text
@@ -192,7 +191,7 @@ namespace CompetitiveRounds
                         //if (PlayerManager.instance.GetPlayersInTeam(teamID)[0].data.view.ControllerActorNr == PhotonNetwork.LocalPlayer.ActorNumber)
                         if (player.data.view.ControllerActorNr == PhotonNetwork.LocalPlayer.ActorNumber)
                         {
-                            text.text = "DISCARD " + (ModdingUtils.Utils.CardBarUtils.instance.GetCardBarSquares(teamID).Length - ((endpick) ? CompetitiveRounds.MaxCards + 1 : CompetitiveRounds.MaxCards)).ToString() + " CARD" + (((ModdingUtils.Utils.CardBarUtils.instance.GetCardBarSquares(teamID).Length - ((endpick) ? CompetitiveRounds.MaxCards + 1 : CompetitiveRounds.MaxCards)) > 1) ? "S" : "");
+                            text.text = "DISCARD " + (ModdingUtils.Utils.CardBarUtils.instance.GetCardBarSquares(teamID).Length - ((endpick) ? CompetitiveRounds.MaxCards + 1 : CompetitiveRounds.MaxCards)).ToString() + " CARD" + (((ModdingUtils.Utils.CardBarUtils.instance.GetCardBarSquares(teamID).Length - ((endpick) ? CompetitiveRounds.MaxCards + 1 : CompetitiveRounds.MaxCards)) != 1) ? "S" : "");
                             foreach (GameObject cardBarButton in ModdingUtils.Utils.CardBarUtils.instance.GetCardBarSquares(teamID))
                             {
                                 Selectable selectable = cardBarButton.GetOrAddComponent<Selectable>();
@@ -211,13 +210,13 @@ namespace CompetitiveRounds
                             ModdingUtils.Utils.Cards.instance.RemoveCardFromPlayer(player, rng.Next(0, player.data.currentCards.Count));
                             yield return new WaitForSecondsRealtime(0.11f);
                         }
-                        else if (pass)
+                        else if (pass && !endpick)
                         {
                             break;
                         }
 
                     }
-                    if (pass && !forceRemove)
+                    if (pass && !forceRemove && !endpick)
                     {
                         break;
                     }
@@ -362,42 +361,6 @@ namespace CompetitiveRounds
         private static void RPCA_PassOnClick()
         {
             MaxCardsHandler.pass = true;
-        }
-    }
-
-    [Serializable]
-    [HarmonyPatch(typeof(CardChoice), "DoPick")]
-    class CardChoicePatchDoPick
-    {
-        private static bool Prefix(CardChoice __instance)
-        {
-            // skip pick phase if the player has passed
-            if (MaxCardsHandler.pass)
-            {
-                __instance.IsPicking = false;
-                return false;
-            }
-            else
-            {
-                return true;
-            }
-        }
-    }
-    [Serializable]
-    [HarmonyPatch(typeof(CardChoiceVisuals), "Show")]
-    class CardChoiceVisualsPatchShow
-    {
-        private static bool Prefix(CardChoiceVisuals __instance)
-        {
-            // skip pick phase if the player has passed
-            if (MaxCardsHandler.pass)
-            {
-                return false;
-            }
-            else
-            {
-                return true;
-            }
         }
     }
 }

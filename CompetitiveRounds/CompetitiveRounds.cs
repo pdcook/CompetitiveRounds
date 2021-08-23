@@ -149,6 +149,9 @@ namespace CompetitiveRounds
             // the last pickstart hook should be the pregamepickfinish
             GameModeManager.AddHook(GameModeHooks.HookPickStart, PreGamePickBanHandler.PreGamePicksFinished);
 
+            // the last pickstart hook should set skipFirstPickPhase to false
+            GameModeManager.AddHook(GameModeHooks.HookPickEnd, PreGamePickBanHandler.SetSkipFirstPickPhase);
+
             // handshake to sync settings
             Unbound.RegisterHandshake(CompetitiveRounds.ModId, this.OnHandShakeCompleted);
         }
@@ -223,6 +226,7 @@ namespace CompetitiveRounds
             void PickMethodCheckboxAction(bool flag)
             {
                 CompetitiveRounds.PreGamePickMethod = flag;
+                CompetitiveRounds.PreGamePickMethodConfig.Value = flag;
                 if (CompetitiveRounds.PreGamePickMethod)
                 {
                     StandardSlider.SetActive(true);
