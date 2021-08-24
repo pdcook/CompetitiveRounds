@@ -94,8 +94,8 @@ namespace CompetitiveRounds
 
     static class MaxCardsHandler
     {
-        private static GameObject textCanvas;
-        private static GameObject passButton;
+        internal static GameObject textCanvas;
+        internal static GameObject passButton;
         private static TextMeshProUGUI text;
         internal static bool active = false;
         internal static bool forceRemove = false;

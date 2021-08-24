@@ -154,6 +154,21 @@ namespace CompetitiveRounds
 
             // handshake to sync settings
             Unbound.RegisterHandshake(CompetitiveRounds.ModId, this.OnHandShakeCompleted);
+
+            // close menus and textboxes when at main menu
+            On.MainMenuHandler.Awake += (orig, self) => 
+            {
+                // close text boxes
+                if (MaxCardsHandler.textCanvas != null) { MaxCardsHandler.textCanvas.SetActive(false); }
+                if (MaxCardsHandler.passButton != null) { MaxCardsHandler.passButton.SetActive(false); }
+                if (PickTimerHandler.timerCanvas != null) { PickTimerHandler.timerCanvas.SetActive(false); }
+                if (PreGamePickBanHandler.textCanvas != null) { PreGamePickBanHandler.textCanvas.SetActive(false); }
+
+                // close togglecards menu
+                ToggleCardsMenuHandler.Close();
+
+                orig(self); 
+            };
         }
         private void OnHandShakeCompleted()
         {

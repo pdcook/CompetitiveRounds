@@ -170,7 +170,7 @@ namespace CompetitiveRounds
                         // assign via RPC
                         else
                         {
-                            NetworkingManager.RPC(typeof(PreGamePickBanHandler), nameof(RPCA_AddCardToPlayer), new object[] { player.data.view.ControllerActorNr, ToggleCardsMenuHandler.cardObjs.ElementAt(i1).Key.name });
+                            NetworkingManager.RPC(typeof(PreGamePickBanHandler), nameof(RPCA_AddCardToPlayer), new object[] { player.data.view.ControllerActorNr, CardManager.cards[ToggleCardsMenuHandler.cardObjs.ElementAt(i1).Key.name].cardInfo.cardName });
                         }
                         // sync the current number of picks
                         NetworkingManager.RPC(typeof(PreGamePickBanHandler), nameof(RPCA_UpdateCardCount), new object[] { currentPicks });
@@ -221,14 +221,10 @@ namespace CompetitiveRounds
         [UnboundRPC]
         private static void RPCA_AddCardToPlayer(int actorID, string cardName)
         {
-            // the master client must call AddCardToPlayer
-            if (PhotonNetwork.OfflineMode || PhotonNetwork.IsMasterClient)
-            {
-                Player player = (Player)typeof(PlayerManager).InvokeMember("GetPlayerWithActorID",
-                    BindingFlags.Instance | BindingFlags.InvokeMethod |
-                    BindingFlags.NonPublic, null, PlayerManager.instance, new object[] { actorID });
-                ModdingUtils.Utils.Cards.instance.AddCardToPlayer(player, CardManager.cards[cardName].cardInfo);
-            }
+            Player player = (Player)typeof(PlayerManager).InvokeMember("GetPlayerWithActorID",
+                BindingFlags.Instance | BindingFlags.InvokeMethod |
+                BindingFlags.NonPublic, null, PlayerManager.instance, new object[] { actorID });
+            ModdingUtils.Utils.Cards.instance.AddCardToPlayer(player, ModdingUtils.Utils.Cards.instance.GetCardWithID(ModdingUtils.Utils.Cards.instance.GetCardID(cardName)));
         }
         // pre-game pick from all common cards
         internal static IEnumerator PreGamePicksCommon(IGameModeHandler gm)
@@ -246,7 +242,7 @@ namespace CompetitiveRounds
 
                 yield return PickFromRarity(player, CardInfo.Rarity.Common);
 
-                yield return new WaitForSecondsRealtime(0.1f);
+                yield return new WaitForSecondsRealtime(0.5f);
             }
             
             yield break;
@@ -268,7 +264,7 @@ namespace CompetitiveRounds
 
                 yield return PickFromRarity(player, CardInfo.Rarity.Uncommon);
 
-                yield return new WaitForSecondsRealtime(0.1f);
+                yield return new WaitForSecondsRealtime(0.5f);
             }
             
             yield break;
@@ -290,7 +286,7 @@ namespace CompetitiveRounds
 
                 yield return PickFromRarity(player, CardInfo.Rarity.Rare);
 
-                yield return new WaitForSecondsRealtime(0.1f);
+                yield return new WaitForSecondsRealtime(0.5f);
 
             }
             

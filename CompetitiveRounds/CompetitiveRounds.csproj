@@ -17,6 +17,9 @@
     <Reference Include="BepInEx.Harmony">
       <HintPath>..\..\..\..\..\Program Files (x86)\Steam\steamapps\common\ROUNDS\BepInEx\core\BepInEx.Harmony.dll</HintPath>
     </Reference>
+    <Reference Include="MMHOOK_Assembly-CSharp">
+      <HintPath>..\..\..\..\..\Program Files (x86)\Steam\steamapps\common\ROUNDS\BepInEx\plugins\MMHOOK_Assembly-CSharp.dll</HintPath>
+    </Reference>
     <Reference Include="ModdingUtils">
       <HintPath>..\..\..\..\..\Program Files (x86)\Steam\steamapps\common\ROUNDS\BepInEx\plugins\ModdingUtils.dll</HintPath>
     </Reference>
