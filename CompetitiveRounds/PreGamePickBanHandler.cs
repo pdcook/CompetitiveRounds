@@ -123,6 +123,7 @@ namespace CompetitiveRounds
             string[] colors = new string[] { "ORANGE", "BLUE", "RED", "GREEN" };
 
             currentPicks = 0;
+            List<CardInfo> pickedCards = new List<CardInfo>() { };
 
             int cardsToPick = 0;
             string rarityString = "";
@@ -156,12 +157,14 @@ namespace CompetitiveRounds
                     // each action checks if the player is allowed the card, and if so assigns it using ModdingUtils
                     if (PhotonNetwork.OfflineMode || player.data.view.ControllerActorNr == PhotonNetwork.LocalPlayer.ActorNumber)
                     {
-                        if (!ModdingUtils.Utils.Cards.instance.PlayerIsAllowedCard(player, CardManager.cards[ToggleCardsMenuHandler.cardObjs.ElementAt(i1).Key.name].cardInfo))
+                        if (!ModdingUtils.Utils.Cards.instance.PlayerIsAllowedCard(player, CardManager.cards[ToggleCardsMenuHandler.cardObjs.ElementAt(i1).Key.name].cardInfo) || !ModdingUtils.Utils.Cards.instance.CardDoesNotConflictWithCards(CardManager.cards[ToggleCardsMenuHandler.cardObjs.ElementAt(i1).Key.name].cardInfo, pickedCards.ToArray()))
                         {
                             return;
                         }
                         // player is allowed card, increase the number of picks
                         currentPicks++;
+                        // add it to the currently picked cards
+                        pickedCards.Add(CardManager.cards[ToggleCardsMenuHandler.cardObjs.ElementAt(i1).Key.name].cardInfo);
                         // assign offline
                         if (PhotonNetwork.OfflineMode)
                         {
@@ -221,9 +224,11 @@ namespace CompetitiveRounds
         [UnboundRPC]
         private static void RPCA_AddCardToPlayer(int actorID, string cardName)
         {
+
             Player player = (Player)typeof(PlayerManager).InvokeMember("GetPlayerWithActorID",
                 BindingFlags.Instance | BindingFlags.InvokeMethod |
                 BindingFlags.NonPublic, null, PlayerManager.instance, new object[] { actorID });
+
             ModdingUtils.Utils.Cards.instance.AddCardToPlayer(player, ModdingUtils.Utils.Cards.instance.GetCardWithID(ModdingUtils.Utils.Cards.instance.GetCardID(cardName)));
         }
         // pre-game pick from all common cards
