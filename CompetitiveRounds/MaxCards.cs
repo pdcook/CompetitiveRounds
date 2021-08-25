@@ -95,11 +95,12 @@ namespace CompetitiveRounds
     static class MaxCardsHandler
     {
         internal static GameObject textCanvas;
+        internal static GameObject passCanvas;
         internal static GameObject passButton;
         private static TextMeshProUGUI text;
         internal static bool active = false;
         internal static bool forceRemove = false;
-        internal static bool pass = false;
+        internal static Dictionary<Player, bool> pass = new Dictionary<Player, bool>() { };
         private static System.Random rng = new System.Random();
         internal static IEnumerator DiscardPhase(IGameModeHandler gm, bool endpick)
         {
@@ -117,9 +118,14 @@ namespace CompetitiveRounds
             {
                 CreateText();
             }
-            if (passButton == null)
+            if (passCanvas == null)
             {
                 CreatePassButton();
+            }
+            pass = new Dictionary<Player, bool>() { };
+            foreach (Player player in PlayerManager.instance.players)
+            {
+                pass[player] = false;
             }
             yield return new WaitForSecondsRealtime(0.1f);
             if (!endpick)
@@ -148,7 +154,11 @@ namespace CompetitiveRounds
         {
             active = true;
             forceRemove = false;
-            pass = false;
+            pass = new Dictionary<Player, bool>() { };
+            foreach (Player p in PlayerManager.instance.players)
+            {
+                pass[p] = false;
+            }
             int teamID = player.teamID;
 
             if (PreGamePickBanHandler.skipFirstPickPhase && !endpick)
@@ -164,7 +174,8 @@ namespace CompetitiveRounds
                 // give the player the option to pass if the option is enabled and it is not the end of the pick phase
                 if (!endpick && CompetitiveRounds.PassDiscard && player.data.view.ControllerActorNr == PhotonNetwork.LocalPlayer.ActorNumber)
                 {
-                    passButton.SetActive(true);
+                    passCanvas.SetActive(true);
+                    passButton.GetOrAddComponent<PassButtonSelectable>().player = player;
                 }
 
                 Color orig = Color.clear;
@@ -211,13 +222,13 @@ namespace CompetitiveRounds
                             ModdingUtils.Utils.Cards.instance.RemoveCardFromPlayer(player, rng.Next(0, player.data.currentCards.Count));
                             yield return new WaitForSecondsRealtime(0.11f);
                         }
-                        else if (pass && !endpick)
+                        else if (pass[player] && !endpick)
                         {
                             break;
                         }
 
                     }
-                    if (pass && !forceRemove && !endpick)
+                    if (pass[player] && !forceRemove && !endpick)
                     {
                         break;
                     }
@@ -248,7 +259,7 @@ namespace CompetitiveRounds
 
             }
             textCanvas.SetActive(false);
-            passButton.SetActive(false);
+            passCanvas.SetActive(false);
             active = false;
             yield break;
         }
@@ -275,29 +286,30 @@ namespace CompetitiveRounds
         }
         private static void CreatePassButton()
         {
-            passButton = new GameObject("PassCanvas", typeof(Canvas), typeof(GraphicRaycaster));
-            passButton.transform.SetParent(Unbound.Instance.canvas.transform);
-            GameObject passBackground = new GameObject("PassBackground", typeof(Image), typeof(PassButtonSelectable));
-            passBackground.transform.SetParent(passButton.transform);
-            passBackground.GetComponent<Image>().color = new Color(0f, 0f, 0f, 0.85f);
-            passBackground.GetComponent<Image>().rectTransform.anchorMin = new Vector2(0f, 0f);
-            passBackground.GetComponent<Image>().rectTransform.anchorMax = new Vector2(1f, 1f);
+            passCanvas = new GameObject("PassCanvas", typeof(Canvas), typeof(GraphicRaycaster));
+            passCanvas.transform.SetParent(Unbound.Instance.canvas.transform);
+            passButton = new GameObject("PassBackground", typeof(Image), typeof(PassButtonSelectable));
+            passButton.transform.SetParent(passCanvas.transform);
+            passButton.GetComponent<Image>().color = new Color(0f, 0f, 0f, 0.85f);
+            passButton.GetComponent<Image>().rectTransform.anchorMin = new Vector2(0f, 0f);
+            passButton.GetComponent<Image>().rectTransform.anchorMax = new Vector2(1f, 1f);
             GameObject passObj = new GameObject("Pass", typeof(TextMeshProUGUI));
-            passObj.transform.SetParent(passBackground.transform);
+            passObj.transform.SetParent(passButton.transform);
 
             TextMeshProUGUI passtext = passObj.GetComponent<TextMeshProUGUI>();
             passtext.text = "Pass";
             passtext.fontSize = 45;
-            passButton.transform.position = new Vector2(5f*(float)Screen.width / 6f, 150f);
+            passCanvas.transform.position = new Vector2(5f*(float)Screen.width / 6f, 150f);
             passtext.enableWordWrapping = false;
             passtext.overflowMode = TextOverflowModes.Overflow;
             passtext.alignment = TextAlignmentOptions.Center;
-            passButton.SetActive(false);
+            passCanvas.SetActive(false);
         }
 
     }
     internal class PassButtonSelectable : MonoBehaviour, IPointerUpHandler, IPointerDownHandler, IPointerEnterHandler, IPointerExitHandler
     {
+        internal Player player;
         bool hover = false;
         bool down = false;
         Color orig;
@@ -332,11 +344,11 @@ namespace CompetitiveRounds
                 {
                     if (!PhotonNetwork.OfflineMode)
                     {
-                        NetworkingManager.RPC(typeof(PassButtonSelectable), nameof(RPCA_PassOnClick), new object[] { });
+                        NetworkingManager.RPC(typeof(PassButtonSelectable), nameof(RPCA_PassOnClick), new object[] { player.data.view.ControllerActorNr });
                     }
                     else
                     {
-                        PassOnClick();
+                        PassOnClick(player);
                     }
                 }
             }
@@ -354,14 +366,17 @@ namespace CompetitiveRounds
             this.gameObject.transform.localScale = origScale;
             this.gameObject.GetComponentInChildren<Image>().color = orig;
         }
-        private static void PassOnClick()
+        private static void PassOnClick(Player player)
         {
-            MaxCardsHandler.pass = true;
+            MaxCardsHandler.pass[player] = true;
         }
         [UnboundRPC]
-        private static void RPCA_PassOnClick()
+        private static void RPCA_PassOnClick(int actorID)
         {
-            MaxCardsHandler.pass = true;
+            Player player = (Player)typeof(PlayerManager).InvokeMember("GetPlayerWithActorID",
+                BindingFlags.Instance | BindingFlags.InvokeMethod |
+                BindingFlags.NonPublic, null, PlayerManager.instance, new object[] { actorID });
+            MaxCardsHandler.pass[player] = true;
         }
     }
 }

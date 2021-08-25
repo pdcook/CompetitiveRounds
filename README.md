@@ -43,6 +43,8 @@ OR
 
 Set the number of common/uncommon/rare cards each player can pick from the _entire_ deck before the game starts
 
+***NOTE TO CUSTOM CARD CREATORS:*** if your card should not be picked during this deckbuilding phase, simply add `CardChoiceSpawnUniqueCardPatch.CustomCardCategories.instance.CardCategory("NoPreGamePick")` to your custom card's `cardInfo.categories`.
+
 _Huge thanks to BossSloth for making this feature possible._
 
 ### Win By Two Rounds / Points
@@ -51,3 +53,7 @@ _Huge thanks to BossSloth for making this feature possible._
 _Credit: Slicimus_
 
 When enabled, ties at match point must be broken by winning two rounds (or points) in a row.
+
+----------------
+
+Congrats to @Xanderman from the modding discord for winning the community art competition

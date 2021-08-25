@@ -289,7 +289,10 @@ namespace CompetitiveRounds
         [UnboundRPC]
         private static void RPCA_AddCardToPlayer(int actorID, string cardName)
         {
-
+            if (!PhotonNetwork.OfflineMode && !PhotonNetwork.IsMasterClient)
+            {
+                return;
+            }
             Player player = (Player)typeof(PlayerManager).InvokeMember("GetPlayerWithActorID",
                 BindingFlags.Instance | BindingFlags.InvokeMethod |
                 BindingFlags.NonPublic, null, PlayerManager.instance, new object[] { actorID });

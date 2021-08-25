@@ -150,6 +150,10 @@ namespace CompetitiveRounds
             // the last pickstart hook should be the pregamepickfinish
             GameModeManager.AddHook(GameModeHooks.HookPickStart, PreGamePickBanHandler.PreGamePicksFinished);
 
+            // set all playerHasPicked to false
+            GameModeManager.AddHook(GameModeHooks.HookGameStart, ResetPlayerHasPicked);
+            GameModeManager.AddHook(GameModeHooks.HookPickEnd, ResetPlayerHasPicked);
+
             // the last pickend hook should set skipFirstPickPhase to false
             GameModeManager.AddHook(GameModeHooks.HookPickEnd, PreGamePickBanHandler.SetSkipFirstPickPhase);
 
@@ -161,7 +165,7 @@ namespace CompetitiveRounds
             {
                 // close text boxes
                 if (MaxCardsHandler.textCanvas != null) { MaxCardsHandler.textCanvas.SetActive(false); }
-                if (MaxCardsHandler.passButton != null) { MaxCardsHandler.passButton.SetActive(false); }
+                if (MaxCardsHandler.passCanvas != null) { MaxCardsHandler.passCanvas.SetActive(false); }
                 if (PickTimerHandler.timerCanvas != null) { PickTimerHandler.timerCanvas.SetActive(false); }
                 if (PreGamePickBanHandler.textCanvas != null) { PreGamePickBanHandler.textCanvas.SetActive(false); }
 
@@ -178,7 +182,16 @@ namespace CompetitiveRounds
                 NetworkingManager.RPC_Others(typeof(CompetitiveRounds), nameof(SyncSettings), new object[] {CompetitiveRounds.WinByTwoRounds, CompetitiveRounds.WinByTwoPoints, CompetitiveRounds.PickTimer, CompetitiveRounds.MaxCards, PassDiscard, DiscardAfterPick, PreGamePickMethod, PreGamePickStandard, PreGamePickCommon, PreGamePickUncommon, PreGamePickRare, PreGameBan});
             }
         }
+        private static IEnumerator ResetPlayerHasPicked(IGameModeHandler _)
+        {
+            foreach (Player player in PlayerManager.instance.players)
+            {
+                CardChoicePatchDoPick.playerHasPicked[player] = false;
+                CardChoiceVisualsPatchShow.playerHasPicked[player] = false;
+            }
 
+            yield break;
+        }
         [UnboundRPC]
         private static void SyncSettings(bool win2rounds, bool win2points, int pickTimer, int maxCards, bool pass, bool after, bool pickMethod, int pick, int common, int uncommon, int rare, int ban)
         {

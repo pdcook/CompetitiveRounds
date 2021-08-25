@@ -25,17 +25,22 @@ namespace CompetitiveRounds
     [HarmonyPatch(typeof(CardChoice), "DoPick")]
     class CardChoicePatchDoPick
     {
-        private static bool Prefix(CardChoice __instance)
+        internal static Dictionary<Player, bool> playerHasPicked = new Dictionary<Player, bool>() { };
+        private static bool Prefix(CardChoice __instance, int picketIDToSet)
         {
-
+            Player player = (Player)typeof(PlayerManager).InvokeMember("GetPlayerWithID",
+                BindingFlags.Instance | BindingFlags.InvokeMethod |
+                BindingFlags.NonPublic, null, PlayerManager.instance, new object[] { picketIDToSet });
             // skip pick phase if the player has passed
-            if (MaxCardsHandler.pass || PreGamePickBanHandler.skipFirstPickPhase)
+            if ((CompetitiveRounds.MaxCards > 0 && ModdingUtils.Utils.CardBarUtils.instance.GetCardBarSquares(player.teamID).Length - 1 >= CompetitiveRounds.MaxCards && !CompetitiveRounds.DiscardAfterPick && CompetitiveRounds.PassDiscard && !playerHasPicked[player]) || PreGamePickBanHandler.skipFirstPickPhase)
             {
+                playerHasPicked[player] = false;
                 __instance.IsPicking = false;
                 return false;
             }
             else
             {
+                playerHasPicked[player] = true;
                 return true;
             }
         }
@@ -44,15 +49,21 @@ namespace CompetitiveRounds
     [HarmonyPatch(typeof(CardChoiceVisuals), "Show")]
     class CardChoiceVisualsPatchShow
     {
-        private static bool Prefix(CardChoiceVisuals __instance)
+        internal static Dictionary<Player, bool> playerHasPicked = new Dictionary<Player, bool>() { };
+        private static bool Prefix(CardChoiceVisuals __instance, int pickerID)
         {
+            Player player = (Player)typeof(PlayerManager).InvokeMember("GetPlayerWithID",
+                BindingFlags.Instance | BindingFlags.InvokeMethod |
+                BindingFlags.NonPublic, null, PlayerManager.instance, new object[] { pickerID });
             // skip pick phase if the player has passed
-            if (MaxCardsHandler.pass || PreGamePickBanHandler.skipFirstPickPhase)
+            if ((CompetitiveRounds.MaxCards > 0 && ModdingUtils.Utils.CardBarUtils.instance.GetCardBarSquares(player.teamID).Length - 1 >= CompetitiveRounds.MaxCards && !CompetitiveRounds.DiscardAfterPick && CompetitiveRounds.PassDiscard && !playerHasPicked[player]) || PreGamePickBanHandler.skipFirstPickPhase)
             {
+                playerHasPicked[player] = false;
                 return false;
             }
             else
             {
+                playerHasPicked[player] = true;
                 return true;
             }
         }
