@@ -17,6 +17,7 @@ using UnboundLib.Networking;
 using System.Collections.Generic;
 using UnboundLib.Utils;
 using System.Collections.ObjectModel;
+using CardChoiceSpawnUniqueCardPatch.CustomCategories;
 
 namespace CompetitiveRounds
 {
@@ -33,6 +34,8 @@ namespace CompetitiveRounds
         private static bool pregamepickfinished = false;
         private static bool picking = false;
         internal static bool skipFirstPickPhase = false;
+
+        private static Dictionary<int, bool> synced = new Dictionary<int, bool>() { };
 
         // UI courtesy of Willis
         private static void CreateText()
@@ -65,14 +68,61 @@ namespace CompetitiveRounds
         // the first startgame hook should reset the pregamepickfinished bool
         internal static IEnumerator PreGamePickReset(IGameModeHandler gm)
         {
+
+            PreGamePickBanHandler.synced = new Dictionary<int, bool>() { };
+
+            foreach (Photon.Realtime.Player player in PhotonNetwork.PlayerList)
+            {
+                PreGamePickBanHandler.synced[player.ActorNumber] = false;
+            }
             pregamepickfinished = false;
             yield break;
         }
-        // the last pickstart hook should set pregamepickfinished to true
+        // the last pickstart hook should sync all players and set pregamepickfinished to true
         internal static IEnumerator PreGamePicksFinished(IGameModeHandler gm)
         {
+            if (!pregamepickfinished && !PhotonNetwork.OfflineMode)
+            {
+                // tell all others that this client is synced, then wait for everyone to be synced
+
+                NetworkingManager.RPC(typeof(PreGamePickBanHandler), nameof(RPCA_ClientSynced), new object[] { PhotonNetwork.LocalPlayer.ActorNumber });
+
+                // create the pick text canvas if it doesn't already exist
+                if (textCanvas == null)
+                {
+                    CreateText();
+                }
+                textCanvas.SetActive(true);
+                while (PreGamePickBanHandler.synced.Values.Where(sync => !sync).Any())
+                {
+                    text.text = "WAITING FOR " + String.Join(", ", GetUnsyncedPlayerColors());
+                    yield return null;
+                }
+                textCanvas.SetActive(false);
+            }
+
             pregamepickfinished = true;
             yield break;
+        }
+        private static string[] GetUnsyncedPlayerColors()
+        {
+            string[] colors = new string[] { "ORANGE", "BLUE", "RED", "GREEN" };
+            List<string> unsyncedColors = new List<string>() { };
+            foreach (int actorID in PreGamePickBanHandler.synced.Where(keyval => !keyval.Value).Select(keyval => keyval.Key))
+            {
+                Player player = (Player)typeof(PlayerManager).InvokeMember("GetPlayerWithActorID",
+                                BindingFlags.Instance | BindingFlags.InvokeMethod |
+                                BindingFlags.NonPublic, null, PlayerManager.instance, new object[] { actorID });
+                unsyncedColors.Add(player.playerID < colors.Length ? colors[player.playerID] : "PLAYER");
+            }
+
+            return unsyncedColors.ToArray();
+        }
+
+        [UnboundRPC]
+        private static void RPCA_ClientSynced(int actorID)
+        {
+            PreGamePickBanHandler.synced[actorID] = true;
         }
 
         // method for pre-game picks using the standard five card draw method
@@ -117,10 +167,30 @@ namespace CompetitiveRounds
 
             return cardNames.ToArray();
         }
+        private static string[] GetCardToggleNamesMatchingCategory(CardCategory cardCategory)
+        {
+            List<string> cardNames = new List<string>() { };
+            foreach (GameObject obj in ToggleCardsMenuHandler.cardObjs.Keys)
+            {
+                if (CardManager.cards[obj.name].cardInfo.categories.Contains(cardCategory))
+                {
+                    cardNames.Add(obj.name);
+                }
+            }
+
+            return cardNames.ToArray();
+        }
         // method to pick from the entire deck using any given rarity
         internal static IEnumerator PickFromRarity(Player player, CardInfo.Rarity rarity)
         {
-            string[] colors = new string[] { "ORANGE", "BLUE", "RED", "GREEN" };
+            // if the player is not the local player then just skip
+            if (player.data.view.ControllerActorNr != PhotonNetwork.LocalPlayer.ActorNumber)
+            {
+                yield break;
+            }
+
+            // add "CardManipulation" and "NoPreGamePick" cards to disabled cards
+            disabledNames = disabledNames.Concat(GetCardToggleNamesMatchingCategory(CustomCardCategories.instance.CardCategory("CardManipulation"))).Concat(GetCardToggleNamesMatchingCategory(CustomCardCategories.instance.CardCategory("NoPreGamePick"))).Distinct().ToList();
 
             currentPicks = 0;
             List<CardInfo> pickedCards = new List<CardInfo>() { };
@@ -176,7 +246,7 @@ namespace CompetitiveRounds
                             NetworkingManager.RPC(typeof(PreGamePickBanHandler), nameof(RPCA_AddCardToPlayer), new object[] { player.data.view.ControllerActorNr, CardManager.cards[ToggleCardsMenuHandler.cardObjs.ElementAt(i1).Key.name].cardInfo.cardName });
                         }
                         // sync the current number of picks
-                        NetworkingManager.RPC(typeof(PreGamePickBanHandler), nameof(RPCA_UpdateCardCount), new object[] { currentPicks });
+                        //NetworkingManager.RPC(typeof(PreGamePickBanHandler), nameof(RPCA_UpdateCardCount), new object[] { currentPicks });
                     }
                 };
             }
@@ -196,16 +266,11 @@ namespace CompetitiveRounds
             // wait until all the picks are done
             while (currentPicks < cardsToPick)
             {
-                // if the client is the player picking, tell them how many of what rarity they have left to choose
-                if (player.data.view.ControllerActorNr == PhotonNetwork.LocalPlayer.ActorNumber)
-                {
-                    text.text = "PICK " + (cardsToPick - currentPicks).ToString() + " " + rarityString + " CARD" + ((cardsToPick - currentPicks != 1) ? "S" : "");
-                }
-                // otherwise, display a waiting message
-                else
-                {
-                    text.text = String.Format("WAITING FOR {0}...", player.playerID < colors.Length ? colors[player.playerID] : "PLAYER");
-                }
+                // tell them how many of what rarity they have left to choose
+                // make sure the menu stays open
+                ToggleCardsMenuHandler.Open(true, true, actions, disabledNames.ToArray().Concat(GetCardToggleNamesWithoutRarity(rarity)).ToArray());
+                text.text = "PICK " + (cardsToPick - currentPicks).ToString() + " " + rarityString + " CARD" + ((cardsToPick - currentPicks != 1) ? "S" : "");
+                
                 yield return null;
             }
             // hide the text once everything is done
@@ -401,6 +466,8 @@ namespace CompetitiveRounds
                 {
                     if (PlayerManager.instance.players[p].data.view.ControllerActorNr == PhotonNetwork.LocalPlayer.ActorNumber)
                     {
+                        // make sure the menu stays open
+                        ToggleCardsMenuHandler.Open(true, true, actions, disabledNames.ToArray().Concat(locallyBanned.ToArray()).ToArray());
                         text.text = "BAN " + (CompetitiveRounds.PreGameBan - currentBans).ToString() + " CARD" + ((CompetitiveRounds.PreGameBan - currentBans != 1) ? "S" : "");
                     }
                     yield return null;

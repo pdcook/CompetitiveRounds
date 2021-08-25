@@ -19,6 +19,7 @@ namespace CompetitiveRounds
 {
     [BepInDependency("com.willis.rounds.unbound", BepInDependency.DependencyFlags.HardDependency)]
     [BepInDependency("pykess.rounds.plugins.moddingutils", BepInDependency.DependencyFlags.HardDependency)] // utilities for cards and cardbars
+    [BepInDependency("pykess.rounds.plugins.cardchoicespawnuniquecardpatch", BepInDependency.DependencyFlags.HardDependency)]
     [BepInPlugin(ModId, ModName, "0.1.0.0")]
     [BepInProcess("Rounds.exe")]
     public class CompetitiveRounds : BaseUnityPlugin
@@ -196,6 +197,8 @@ namespace CompetitiveRounds
         }
         private void NewGUI(GameObject menu)
         {
+            Slider maxSlider = null;
+
             MenuHandler.CreateText("Competitive Rounds Options", menu, out TextMeshProUGUI _, 45);
             MenuHandler.CreateText(" ", menu, out TextMeshProUGUI _, 15);
             void TimerChanged(float val)
@@ -203,14 +206,36 @@ namespace CompetitiveRounds
                 CompetitiveRounds.PickTimerConfig.Value = UnityEngine.Mathf.RoundToInt(val);
                 CompetitiveRounds.PickTimer = CompetitiveRounds.PickTimerConfig.Value;
             }
+            MenuHandler.CreateSlider("Pick Phase Timer (seconds)\n0 disables", menu, 30, 0f, 100f, CompetitiveRounds.PickTimerConfig.Value, TimerChanged, out UnityEngine.UI.Slider timerSlider, true);
+            MenuHandler.CreateText(" ", menu, out TextMeshProUGUI maxCardsWarning, 15);
             void MaxChanged(float val)
             {
-                CompetitiveRounds.MaxCardsConfig.Value = UnityEngine.Mathf.RoundToInt(val);
-                CompetitiveRounds.MaxCards = CompetitiveRounds.MaxCardsConfig.Value;
+
+                if (CompetitiveRounds.PreGamePickMethod && val > 0f && CompetitiveRounds.PreGamePickStandard > val)
+                {
+                    maxCardsWarning.text = "MAX CARDS MUST BE GREATER THAN OR EQUAL TO THE TOTAL NUMBER OF PRE-GAME PICKS";
+                    maxCardsWarning.color = Color.red;
+
+                    if (maxSlider != null) { Unbound.Instance.ExecuteAfterSeconds(0.1f, () => { maxSlider.value = (float)CompetitiveRounds.PreGamePickStandard; }); }
+                }
+                else if (!CompetitiveRounds.PreGamePickMethod && val > 0f && CompetitiveRounds.PreGamePickCommon + CompetitiveRounds.PreGamePickUncommon + CompetitiveRounds.PreGamePickRare > val)
+                {
+                    maxCardsWarning.text = "MAX CARDS MUST BE GREATER THAN OR EQUAL TO THE TOTAL NUMBER OF PRE-GAME PICKS";
+                    maxCardsWarning.color = Color.red;
+
+                    if (maxSlider != null) { Unbound.Instance.ExecuteAfterSeconds(0.1f, () => { maxSlider.value = (float)(CompetitiveRounds.PreGamePickCommon + CompetitiveRounds.PreGamePickUncommon + CompetitiveRounds.PreGamePickRare); }); }
+                }
+                else
+                {
+                    CompetitiveRounds.MaxCardsConfig.Value = UnityEngine.Mathf.RoundToInt(val);
+                    CompetitiveRounds.MaxCards = CompetitiveRounds.MaxCardsConfig.Value;
+                }
+                if (val == 0f)
+                {
+                    maxCardsWarning.text = " ";
+                }
             }
-            MenuHandler.CreateSlider("Pick Phase Timer (seconds)\n0 disables", menu, 30, 0f, 100f, CompetitiveRounds.PickTimerConfig.Value, TimerChanged, out UnityEngine.UI.Slider timerSlider, true);
-            MenuHandler.CreateText(" ", menu, out var _, 15);
-            MenuHandler.CreateSlider("Maximum Number of Cards\n0 disables", menu, 30, 0f, 50f, CompetitiveRounds.MaxCardsConfig.Value, MaxChanged, out UnityEngine.UI.Slider maxSlider, true);
+            MenuHandler.CreateSlider("Maximum Number of Cards\n0 disables", menu, 30, 0f, 50f, CompetitiveRounds.MaxCardsConfig.Value, MaxChanged, out maxSlider, true);
             void PassCheckboxAction(bool flag)
             {
                 CompetitiveRounds.PassDiscardConfig.Value = flag;
@@ -267,21 +292,71 @@ namespace CompetitiveRounds
             {
                 CompetitiveRounds.PreGamePickStandardConfig.Value = UnityEngine.Mathf.RoundToInt(val);
                 CompetitiveRounds.PreGamePickStandard = CompetitiveRounds.PreGamePickStandardConfig.Value;
+
+                if (CompetitiveRounds.PreGamePickMethod && CompetitiveRounds.MaxCards>0 && CompetitiveRounds.PreGamePickStandard > CompetitiveRounds.MaxCards)
+                {
+                    maxCardsWarning.text = "MAX CARDS MUST BE GREATER THAN OR EQUAL TO THE TOTAL NUMBER OF PRE-GAME PICKS";
+                    maxCardsWarning.color = Color.red;
+
+                    maxSlider.value = (float)CompetitiveRounds.PreGamePickStandard;
+                    MaxChanged((float)CompetitiveRounds.PreGamePickStandard);
+                }
+                else
+                {
+                    //maxCardsWarning.text = " ";
+                }
             }
             void CommonChanged(float val)
             {
                 CompetitiveRounds.PreGamePickCommonConfig.Value = UnityEngine.Mathf.RoundToInt(val);
                 CompetitiveRounds.PreGamePickCommon = CompetitiveRounds.PreGamePickCommonConfig.Value;
+
+                if (!CompetitiveRounds.PreGamePickMethod && CompetitiveRounds.MaxCards > 0 && CompetitiveRounds.PreGamePickCommon + CompetitiveRounds.PreGamePickUncommon + CompetitiveRounds.PreGamePickRare > CompetitiveRounds.MaxCards)
+                {
+                    maxCardsWarning.text = "MAX CARDS MUST BE GREATER THAN OR EQUAL TO THE TOTAL NUMBER OF PRE-GAME PICKS";
+                    maxCardsWarning.color = Color.red;
+
+                    maxSlider.value = (float)(CompetitiveRounds.PreGamePickCommon + CompetitiveRounds.PreGamePickUncommon + CompetitiveRounds.PreGamePickRare);
+                    MaxChanged((float)(CompetitiveRounds.PreGamePickCommon + CompetitiveRounds.PreGamePickUncommon + CompetitiveRounds.PreGamePickRare));
+                }
+                else
+                {
+                    //maxCardsWarning.text = " ";
+                }
             }
             void UncommonChanged(float val)
             {
                 CompetitiveRounds.PreGamePickUncommonConfig.Value = UnityEngine.Mathf.RoundToInt(val);
                 CompetitiveRounds.PreGamePickUncommon = CompetitiveRounds.PreGamePickUncommonConfig.Value;
+                if (!CompetitiveRounds.PreGamePickMethod && CompetitiveRounds.MaxCards > 0 && CompetitiveRounds.PreGamePickCommon + CompetitiveRounds.PreGamePickUncommon + CompetitiveRounds.PreGamePickRare > CompetitiveRounds.MaxCards)
+                {
+                    maxCardsWarning.text = "MAX CARDS MUST BE GREATER THAN OR EQUAL TO THE TOTAL NUMBER OF PRE-GAME PICKS";
+                    maxCardsWarning.color = Color.red;
+
+                    maxSlider.value = (float)(CompetitiveRounds.PreGamePickCommon + CompetitiveRounds.PreGamePickUncommon + CompetitiveRounds.PreGamePickRare);
+                    MaxChanged((float)(CompetitiveRounds.PreGamePickCommon + CompetitiveRounds.PreGamePickUncommon + CompetitiveRounds.PreGamePickRare));
+                }
+                else
+                {
+                    //maxCardsWarning.text = " ";
+                }
             }
             void RareChanged(float val)
             {
                 CompetitiveRounds.PreGamePickRareConfig.Value = UnityEngine.Mathf.RoundToInt(val);
                 CompetitiveRounds.PreGamePickRare = CompetitiveRounds.PreGamePickRareConfig.Value;
+                if (!CompetitiveRounds.PreGamePickMethod && CompetitiveRounds.MaxCards > 0 && CompetitiveRounds.PreGamePickCommon + CompetitiveRounds.PreGamePickUncommon + CompetitiveRounds.PreGamePickRare > CompetitiveRounds.MaxCards)
+                {
+                    maxCardsWarning.text = "MAX CARDS MUST BE GREATER THAN OR EQUAL TO THE TOTAL NUMBER OF PRE-GAME PICKS";
+                    maxCardsWarning.color = Color.red;
+
+                    maxSlider.value = (float)(CompetitiveRounds.PreGamePickCommon + CompetitiveRounds.PreGamePickUncommon + CompetitiveRounds.PreGamePickRare);
+                    MaxChanged((float)(CompetitiveRounds.PreGamePickCommon + CompetitiveRounds.PreGamePickUncommon + CompetitiveRounds.PreGamePickRare));
+                }
+                else
+                {
+                    //maxCardsWarning.text = " ";
+                }
             }
 
             StandardSlider = MenuHandler.CreateSlider("Pre-game picks", menu, 30, 0f, 10f, CompetitiveRounds.PreGamePickStandardConfig.Value, StandardChanged, out standard, true);
