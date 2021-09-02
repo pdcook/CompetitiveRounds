@@ -538,7 +538,7 @@ namespace CompetitiveRounds
 
             for (int i = 0; i < CardManager.cards.Count; i++)
             {
-                if (CardManager.cards.Values.ToArray()[i].enabled)
+                if (CardManager.cards.Values.ToArray()[i].enabledWithoutSaving)
                 {
                     CardManager.EnableCard(CardManager.cards.Values.ToArray()[i].cardInfo, true);
                 }
