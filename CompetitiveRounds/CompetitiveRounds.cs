@@ -20,7 +20,7 @@ namespace CompetitiveRounds
     [BepInDependency("com.willis.rounds.unbound", BepInDependency.DependencyFlags.HardDependency)]
     [BepInDependency("pykess.rounds.plugins.moddingutils", BepInDependency.DependencyFlags.HardDependency)] // utilities for cards and cardbars
     [BepInDependency("pykess.rounds.plugins.cardchoicespawnuniquecardpatch", BepInDependency.DependencyFlags.HardDependency)]
-    [BepInPlugin(ModId, ModName, "0.1.0.0")]
+    [BepInPlugin(ModId, ModName, "0.1.0.1")]
     [BepInProcess("Rounds.exe")]
     public class CompetitiveRounds : BaseUnityPlugin
     {

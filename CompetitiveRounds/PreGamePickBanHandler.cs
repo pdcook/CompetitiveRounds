@@ -37,6 +37,24 @@ namespace CompetitiveRounds
 
         private static Dictionary<int, bool> synced = new Dictionary<int, bool>() { };
 
+        private static List<CardInfo> activeCards
+        {
+            get
+            {
+                return ((ObservableCollection<CardInfo>)typeof(CardManager).GetField("activeCards", BindingFlags.NonPublic | BindingFlags.Static).GetValue(null)).ToList();
+
+        }
+            set { }
+        }
+        private static List<CardInfo> inactiveCards
+        {
+            get
+            {
+                return (List<CardInfo>)typeof(CardManager).GetField("inactiveCards", BindingFlags.NonPublic | BindingFlags.Static).GetValue(null);
+            }
+            set { }
+        }
+
         // UI courtesy of Willis
         private static void CreateText()
         {
@@ -518,7 +536,7 @@ namespace CompetitiveRounds
                 disabledNames.Add(banned[i]);
                 bannedNames.Add(CardManager.cards[banned[i]].cardInfo.name);
                 cardsToShow.Add(CardManager.cards[banned[i]].cardInfo);
-                CardManager.DisableCard(CardManager.cards[banned[i]].cardInfo, false);
+                CardManager.DisableCardTemp(CardManager.cards[banned[i]].cardInfo);
             }
             picking = false;
         }
@@ -535,16 +553,15 @@ namespace CompetitiveRounds
         [UnboundRPC]
         private static void RPCA_SyncToggle()
         {
-
             for (int i = 0; i < CardManager.cards.Count; i++)
             {
                 if (CardManager.cards.Values.ToArray()[i].enabled)
                 {
-                    CardManager.EnableCard(CardManager.cards.Values.ToArray()[i].cardInfo, true);
+                    CardManager.EnableCard(CardManager.cards.Values.ToArray()[i].cardInfo, false);
                 }
                 else
                 {
-                    CardManager.DisableCard(CardManager.cards.Values.ToArray()[i].cardInfo, true);
+                    CardManager.DisableCard(CardManager.cards.Values.ToArray()[i].cardInfo, false);
                 }
             }
         }
