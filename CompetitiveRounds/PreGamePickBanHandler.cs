@@ -534,35 +534,27 @@ namespace CompetitiveRounds
         }
         internal static void RestoreCardTogglesAction()
         {
-            RPCA_SyncToggle();
             foreach (var obj in ToggleCardsMenuHandler.cardObjs)
             {
-                ToggleCardsMenuHandler.UpdateVisualsCardObj(obj.Key, CardManager.cards[obj.Key.name].enabledWithoutSaving);
+                ToggleCardsMenuHandler.UpdateVisualsCardObj(obj.Key, CardManager.cards[obj.Key.name].config.Value);
             }
+            Unbound.Instance.StartCoroutine(RestoreCardToggles(null));
         }
         internal static IEnumerator RestoreCardToggles(IGameModeHandler gm)
         {
             if (PhotonNetwork.OfflineMode || PhotonNetwork.IsMasterClient)
             {
-                NetworkingManager.RPC(typeof(PreGamePickBanHandler), nameof(RPCA_SyncToggle), new object[] { });
+                NetworkingManager.RPC(typeof(PreGamePickBanHandler), nameof(RPCA_ResetToggles), new object[] { });
             }
             yield return new WaitForSecondsRealtime(1f);
             yield break;
         }
         [UnboundRPC]
-        private static void RPCA_SyncToggle()
+        private static void RPCA_ResetToggles()
         {
-            for (int i = 0; i < CardManager.cards.Count; i++)
-            {
-                if (CardManager.cards.Values.ToArray()[i].enabled)
-                {
-                    CardManager.EnableCard(CardManager.cards.Values.ToArray()[i].cardInfo, false);
-                }
-                else
-                {
-                    CardManager.DisableCard(CardManager.cards.Values.ToArray()[i].cardInfo, false);
-                }
-            }
+            CardManager.EnableCards(CardManager.cards.Values.Where(c => bannedNames.Contains(c.cardInfo.name)).Select(c=>c.cardInfo).ToArray(), false);
+
+            bannedNames = new List<string>() { };
         }
     }
 }
