@@ -17,6 +17,7 @@ using UnboundLib.Networking;
 using System.Collections.Generic;
 using ModdingUtils.Utils;
 using UnityEngine.EventSystems;
+using UnboundLib.Extensions;
 
 namespace CompetitiveRounds
 {
@@ -61,7 +62,7 @@ namespace CompetitiveRounds
                 {
                     if (!PhotonNetwork.OfflineMode)
                     {
-                        NetworkingManager.RPC(typeof(Selectable), nameof(RPCA_RemoveCardOnClick), new object[] { player.data.view.ControllerActorNr, idx - 1 });
+                        NetworkingManager.RPC(typeof(Selectable), nameof(RPCA_RemoveCardOnClick), new object[] { player.playerID, idx - 1 });
                     }
                     else
                     {
@@ -84,11 +85,9 @@ namespace CompetitiveRounds
             ModdingUtils.Utils.CardBarUtils.instance.ChangeCardSquareColor(this.gameObject.transform.GetChild(0).gameObject, orig);
         }
         [UnboundRPC]
-        private static void RPCA_RemoveCardOnClick(int actorID, int idx)
+        private static void RPCA_RemoveCardOnClick(int playerID, int idx)
         {
-            ModdingUtils.Utils.Cards.instance.RemoveCardFromPlayer((Player)typeof(PlayerManager).InvokeMember("GetPlayerWithActorID",
-            BindingFlags.Instance | BindingFlags.InvokeMethod |
-            BindingFlags.NonPublic, null, PlayerManager.instance, new object[] { actorID }), idx);
+            ModdingUtils.Utils.Cards.instance.RemoveCardFromPlayer((Player)PlayerManager.instance.InvokeMethod("GetPlayerWithID", playerID), idx);
         }
     }
 
@@ -172,7 +171,7 @@ namespace CompetitiveRounds
                 textCanvas.SetActive(true);
 
                 // give the player the option to pass if the option is enabled and it is not the end of the pick phase
-                if (!endpick && CompetitiveRounds.PassDiscard && player.data.view.ControllerActorNr == PhotonNetwork.LocalPlayer.ActorNumber)
+                if (!endpick && CompetitiveRounds.PassDiscard && player.data.view.IsMine)
                 {
                     passCanvas.SetActive(true);
                     passButton.GetOrAddComponent<PassButtonSelectable>().player = player;
@@ -200,8 +199,7 @@ namespace CompetitiveRounds
                     while (CompetitiveRounds.MaxCards > 0 && ModdingUtils.Utils.CardBarUtils.instance.GetCardBarSquares(teamID).Length - 1 >= ((endpick) ? CompetitiveRounds.MaxCards + 1 : CompetitiveRounds.MaxCards))
                     {
 
-                        //if (PlayerManager.instance.GetPlayersInTeam(teamID)[0].data.view.ControllerActorNr == PhotonNetwork.LocalPlayer.ActorNumber)
-                        if (player.data.view.ControllerActorNr == PhotonNetwork.LocalPlayer.ActorNumber)
+                        if (player.data.view.IsMine)
                         {
                             text.text = "DISCARD " + (ModdingUtils.Utils.CardBarUtils.instance.GetCardBarSquares(teamID).Length - ((endpick) ? CompetitiveRounds.MaxCards + 1 : CompetitiveRounds.MaxCards)).ToString() + " CARD" + (((ModdingUtils.Utils.CardBarUtils.instance.GetCardBarSquares(teamID).Length - ((endpick) ? CompetitiveRounds.MaxCards + 1 : CompetitiveRounds.MaxCards)) != 1) ? "S" : "");
                             foreach (GameObject cardBarButton in ModdingUtils.Utils.CardBarUtils.instance.GetCardBarSquares(teamID))
@@ -212,8 +210,7 @@ namespace CompetitiveRounds
                         }
                         else
                         {
-                            string[] colors = new string[] {"ORANGE", "BLUE", "RED", "GREEN"};
-                            text.text = String.Format("WAITING FOR {0}...", player.playerID < colors.Length ? colors[player.playerID] : "PLAYER");
+                            text.text = $"WAITING FOR {UnboundLib.Utils.ExtraPlayerSkins.GetTeamColorName(player.GetAdditionalData().colorID).ToUpper()}";
                         }
                         yield return null;
                     
@@ -238,8 +235,7 @@ namespace CompetitiveRounds
 
                 yield return new WaitForSecondsRealtime(0.1f);
 
-                //if (PlayerManager.instance.GetPlayersInTeam(teamID)[0].data.view.ControllerActorNr == PhotonNetwork.LocalPlayer.ActorNumber)
-                if (player.data.view.ControllerActorNr == PhotonNetwork.LocalPlayer.ActorNumber)
+                if (player.data.view.IsMine)
                 {
                     foreach (GameObject cardBarButton in ModdingUtils.Utils.CardBarUtils.instance.GetCardBarSquares(teamID))
                     {
@@ -344,7 +340,7 @@ namespace CompetitiveRounds
                 {
                     if (!PhotonNetwork.OfflineMode)
                     {
-                        NetworkingManager.RPC(typeof(PassButtonSelectable), nameof(RPCA_PassOnClick), new object[] { player.data.view.ControllerActorNr });
+                        NetworkingManager.RPC(typeof(PassButtonSelectable), nameof(RPCA_PassOnClick), new object[] { player.playerID});
                     }
                     else
                     {
@@ -371,11 +367,9 @@ namespace CompetitiveRounds
             MaxCardsHandler.pass[player] = true;
         }
         [UnboundRPC]
-        private static void RPCA_PassOnClick(int actorID)
+        private static void RPCA_PassOnClick(int playerID)
         {
-            Player player = (Player)typeof(PlayerManager).InvokeMember("GetPlayerWithActorID",
-                BindingFlags.Instance | BindingFlags.InvokeMethod |
-                BindingFlags.NonPublic, null, PlayerManager.instance, new object[] { actorID });
+            Player player = (Player)PlayerManager.instance.InvokeMethod("GetPlayerWithID",playerID);
             MaxCardsHandler.pass[player] = true;
         }
     }

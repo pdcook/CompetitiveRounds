@@ -20,7 +20,7 @@ namespace CompetitiveRounds
     [BepInDependency("com.willis.rounds.unbound", BepInDependency.DependencyFlags.HardDependency)]
     [BepInDependency("pykess.rounds.plugins.moddingutils", BepInDependency.DependencyFlags.HardDependency)] // utilities for cards and cardbars
     [BepInDependency("pykess.rounds.plugins.cardchoicespawnuniquecardpatch", BepInDependency.DependencyFlags.HardDependency)]
-    [BepInPlugin(ModId, ModName, "1.0.3")]
+    [BepInPlugin(ModId, ModName, "1.0.4")]
     [BepInProcess("Rounds.exe")]
     public class CompetitiveRounds : BaseUnityPlugin
     {
@@ -59,7 +59,7 @@ namespace CompetitiveRounds
         public static int PreGamePickStandard;
         public static bool PreGamePickMethod;
 
-
+        public static CompetitiveRounds instance;
 
         public static int PreGameBan;
 
@@ -79,6 +79,8 @@ namespace CompetitiveRounds
 
         private void Awake()
         {
+            CompetitiveRounds.instance = this;
+
             // bind configs with BepInEx
             WinByTwoRoundsConfig = Config.Bind("CompetitiveRounds", "WinByTwoRounds", false, "When enabled, if the game is tied at match point, then players must win by two roudns.");
             WinByTwoPointsConfig = Config.Bind("CompetitiveRounds", "WinByTwoPoints", false, "When enabled, if the game is tied at match point, then players must win by two points.");

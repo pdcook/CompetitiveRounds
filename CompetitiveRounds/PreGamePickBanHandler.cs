@@ -16,6 +16,7 @@ using Photon.Pun;
 using UnboundLib.Networking;
 using System.Collections.Generic;
 using UnboundLib.Utils;
+using UnboundLib.Extensions;
 using System.Collections.ObjectModel;
 using CardChoiceSpawnUniqueCardPatch.CustomCategories;
 
@@ -86,7 +87,6 @@ namespace CompetitiveRounds
         // the first startgame hook should reset the pregamepickfinished bool
         internal static IEnumerator PreGamePickReset(IGameModeHandler gm)
         {
-
             PreGamePickBanHandler.synced = new Dictionary<int, bool>() { };
 
             foreach (Photon.Realtime.Player player in PhotonNetwork.PlayerList)
@@ -115,7 +115,7 @@ namespace CompetitiveRounds
                 {
                     text.text = "WAITING FOR " + String.Join(", ", GetUnsyncedPlayerColors());
                     yield return null;
-                }
+                };
                 textCanvas.SetActive(false);
             }
 
@@ -124,19 +124,17 @@ namespace CompetitiveRounds
         }
         private static string[] GetUnsyncedPlayerColors()
         {
-            string[] colors = new string[] { "ORANGE", "BLUE", "RED", "GREEN" };
             List<string> unsyncedColors = new List<string>() { };
             foreach (int actorID in PreGamePickBanHandler.synced.Where(keyval => !keyval.Value).Select(keyval => keyval.Key))
             {
-                Player player = (Player)typeof(PlayerManager).InvokeMember("GetPlayerWithActorID",
-                                BindingFlags.Instance | BindingFlags.InvokeMethod |
-                                BindingFlags.NonPublic, null, PlayerManager.instance, new object[] { actorID });
-                unsyncedColors.Add(player.playerID < colors.Length ? colors[player.playerID] : "PLAYER");
+                foreach (Player player in PlayerManager.instance.players.Where(p=>p.data.view.ControllerActorNr == actorID))
+                {
+                    unsyncedColors.Add(ExtraPlayerSkins.GetTeamColorName(player.GetAdditionalData().colorID).ToUpper());
+                }
             }
 
             return unsyncedColors.ToArray();
         }
-
         [UnboundRPC]
         private static void RPCA_ClientSynced(int actorID)
         {
@@ -218,7 +216,7 @@ namespace CompetitiveRounds
         internal static IEnumerator PickFromRarity(Player player, CardInfo.Rarity rarity)
         {
             // if the player is not the local player then just skip
-            if (player.data.view.ControllerActorNr != PhotonNetwork.LocalPlayer.ActorNumber)
+            if (!player.data.view.IsMine)
             {
                 yield break;
             }
@@ -256,7 +254,7 @@ namespace CompetitiveRounds
                 actions[i] = () =>
                 {
                     // each action checks if the player is allowed the card, and if so assigns it using ModdingUtils
-                    if (PhotonNetwork.OfflineMode || player.data.view.ControllerActorNr == PhotonNetwork.LocalPlayer.ActorNumber)
+                    if (PhotonNetwork.OfflineMode || player.data.view.IsMine)
                     {
                         if (!ModdingUtils.Utils.Cards.instance.PlayerIsAllowedCard(player, CardManager.cards[ToggleCardsMenuHandler.cardObjs.ElementAt(i1).Key.name].cardInfo) || !ModdingUtils.Utils.Cards.instance.CardDoesNotConflictWithCards(CardManager.cards[ToggleCardsMenuHandler.cardObjs.ElementAt(i1).Key.name].cardInfo, pickedCards.ToArray()))
                         {
@@ -274,7 +272,7 @@ namespace CompetitiveRounds
                         // assign via RPC
                         else
                         {
-                            NetworkingManager.RPC(typeof(PreGamePickBanHandler), nameof(RPCA_AddCardToPlayer), new object[] { player.data.view.ControllerActorNr, CardManager.cards[ToggleCardsMenuHandler.cardObjs.ElementAt(i1).Key.name].cardInfo.cardName });
+                            NetworkingManager.RPC(typeof(PreGamePickBanHandler), nameof(RPCA_AddCardToPlayer), new object[] { player.playerID, CardManager.cards[ToggleCardsMenuHandler.cardObjs.ElementAt(i1).Key.name].cardInfo.cardName });
                         }
                         // sync the current number of picks
                         //NetworkingManager.RPC(typeof(PreGamePickBanHandler), nameof(RPCA_UpdateCardCount), new object[] { currentPicks });
@@ -288,7 +286,7 @@ namespace CompetitiveRounds
                 CreateText();
             }
             // if the client is the player thats picking, show the card choice menu with disabled cards greyed out
-            if (player.data.view.ControllerActorNr == PhotonNetwork.LocalPlayer.ActorNumber)
+            if (player.data.view.IsMine)
             {
                 ToggleCardsMenuHandler.Open(true, true, actions, CardTogglesPlayerCannotPick(player).Concat(GetCardToggleNamesWithoutRarity(rarity)).ToArray());
             }
@@ -318,15 +316,13 @@ namespace CompetitiveRounds
             currentPicks = cards;
         }
         [UnboundRPC]
-        private static void RPCA_AddCardToPlayer(int actorID, string cardName)
+        private static void RPCA_AddCardToPlayer(int playerID, string cardName)
         {
             if (!PhotonNetwork.OfflineMode && !PhotonNetwork.IsMasterClient)
             {
                 return;
             }
-            Player player = (Player)typeof(PlayerManager).InvokeMember("GetPlayerWithActorID",
-                BindingFlags.Instance | BindingFlags.InvokeMethod |
-                BindingFlags.NonPublic, null, PlayerManager.instance, new object[] { actorID });
+            Player player = (Player)PlayerManager.instance.InvokeMethod("GetPlayerWithID", playerID);
             ModdingUtils.Utils.Cards.instance.AddCardToPlayer(player, ModdingUtils.Utils.Cards.instance.GetCardWithName(cardName), addToCardBar: true);
         }
         // pre-game pick from all common cards
@@ -395,6 +391,7 @@ namespace CompetitiveRounds
             
             yield break;
         }
+
         // pre-game ban phase
         internal static IEnumerator PreGameBan(IGameModeHandler gm)
         {
@@ -449,7 +446,7 @@ namespace CompetitiveRounds
                         ToggleCardsMenuHandler.Close();
 
                         // if the client is the player picking, either re-open the menu or end the ban phase for this player by syncing the cards they banned with all clients
-                        if (PlayerManager.instance.players[p].data.view.ControllerActorNr == PhotonNetwork.LocalPlayer.ActorNumber)
+                        if (PlayerManager.instance.players[p].data.view.IsMine)
                         {
                             if (currentBans < CompetitiveRounds.PreGameBan)
                             {
@@ -464,20 +461,21 @@ namespace CompetitiveRounds
                 }
 
                 // show the menu only to the player currently banning
-                if (PlayerManager.instance.players[p].data.view.ControllerActorNr == PhotonNetwork.LocalPlayer.ActorNumber)
+                if (PlayerManager.instance.players[p].data.view.IsMine)
                 {
                     ToggleCardsMenuHandler.Open(true, true, actions, disabledNames.ToArray().Concat(locallyBanned.ToArray()).ToArray());
                 }
                 // show other players some waiting text
                 else
                 {
-                    string[] colors = new string[] { "ORANGE", "BLUE", "RED", "GREEN" };
-                    text.text = String.Format("WAITING FOR {0}...", PlayerManager.instance.players[p].playerID < colors.Length ? colors[PlayerManager.instance.players[p].playerID] : "PLAYER");
+                    //string[] colors = new string[] { "ORANGE", "BLUE", "RED", "GREEN" };
+                    //text.text = String.Format("WAITING FOR {0}...", PlayerManager.instance.players[p].playerID < colors.Length ? colors[PlayerManager.instance.players[p].playerID] : "PLAYER");
+                    text.text = $"waiting for {UnboundLib.Utils.ExtraPlayerSkins.GetTeamColorName(PlayerManager.instance.players[p].GetAdditionalData().colorID)}...".ToUpper();
                 }
                 // wait for the player to ban all their respective cards
                 while (picking)
                 {
-                    if (PlayerManager.instance.players[p].data.view.ControllerActorNr == PhotonNetwork.LocalPlayer.ActorNumber)
+                    if (PlayerManager.instance.players[p].data.view.IsMine)
                     {
                         // make sure the menu stays open
                         ToggleCardsMenuHandler.Open(true, true, actions, disabledNames.ToArray().Concat(locallyBanned.ToArray()).ToArray());
@@ -499,7 +497,7 @@ namespace CompetitiveRounds
             textCanvas.SetActive(true);
             text.text = "BANNED";
 
-            int teamID = (PlayerManager.instance.players.Where(player => player.data.view.ControllerActorNr == PhotonNetwork.LocalPlayer.ActorNumber).First()).teamID;
+            int teamID = (PlayerManager.instance.players.Where(player => player.data.view.IsMine).First()).teamID;
 
             for (int i = 0; i < cardsToShow.Count; i++)
             {
